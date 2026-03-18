@@ -1,11 +1,14 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import {
   startTranslation,
   getTranslationStatus,
   getChapterImages,
+  getChapters,
   type ChapterImage,
   type TranslationProgress,
+  type Comic,
+  type Chapter,
 } from "../api/client";
 import ProgressBar from "../components/ProgressBar";
 import TranslationPanel from "../components/TranslationPanel";
@@ -23,6 +26,9 @@ export default function ReaderPage() {
   const [mode, setMode] = useState<DisplayMode>("overlay");
   const [activeIndex, setActiveIndex] = useState(0);
   const [error, setError] = useState("");
+  const [comic, setComic] = useState<Comic | null>(null);
+  const [chapter, setChapter] = useState<Chapter | null>(null);
+  const [allChapters, setAllChapters] = useState<Chapter[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const imageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -33,6 +39,14 @@ export default function ReaderPage() {
 
     async function init() {
       try {
+        const { comic: c, chapters } = await getChapters(comicId);
+        if (!cancelled) {
+          setComic(c);
+          setAllChapters(chapters);
+          const ch = chapters.find((ch) => ch.id === chapId) ?? null;
+          setChapter(ch);
+        }
+
         const { progress: p } = await startTranslation(comicId, chapId);
         if (cancelled) return;
         setProgress(p);
@@ -123,11 +137,74 @@ export default function ReaderPage() {
     );
   }
 
+  const freeChapters = allChapters
+    .filter((ch) => ch.is_free === 1)
+    .sort((a, b) => (a.chapter_number ?? 0) - (b.chapter_number ?? 0));
+  const currentIdx = freeChapters.findIndex((ch) => ch.id === chapId);
+  const prevChapter = currentIdx > 0 ? freeChapters[currentIdx - 1] : null;
+  const nextChapter =
+    currentIdx < freeChapters.length - 1 ? freeChapters[currentIdx + 1] : null;
+
   return (
     <div>
+      {/* Chapter info header */}
+      {comic && (
+        <div className="mb-4 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3">
+          <Link
+            to={`/comic/${comicId}`}
+            className="text-sm text-purple-400 hover:text-purple-300"
+          >
+            ← {comic.title}
+          </Link>
+          {chapter && (
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="text-xl font-bold">
+                Capítulo {chapter.chapter_number}
+              </span>
+              {chapter.title && (
+                <span className="text-gray-300">{chapter.title}</span>
+              )}
+            </div>
+          )}
+          <div className="mt-1 flex flex-wrap gap-x-4 text-xs text-gray-500">
+            {comic.author && <span>Autor: {comic.author}</span>}
+            {comic.total_chapters && (
+              <span>{comic.total_chapters} capítulos no total</span>
+            )}
+            {comic.serial_status && (
+              <span>
+                {comic.serial_status.toLowerCase() === "serializing"
+                  ? "Em serialização"
+                  : comic.serial_status}
+              </span>
+            )}
+            {chapter?.is_free === 1 && (
+              <span className="text-green-400">Gratuito</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Reader</h2>
+        <div className="flex gap-2">
+          {prevChapter && (
+            <Link
+              to={`/comic/${comicId}/read/${prevChapter.id}`}
+              className="rounded border border-gray-700 px-3 py-1 text-sm transition hover:border-purple-500"
+            >
+              ← Cap. {prevChapter.chapter_number}
+            </Link>
+          )}
+          {nextChapter && (
+            <Link
+              to={`/comic/${comicId}/read/${nextChapter.id}`}
+              className="rounded border border-gray-700 px-3 py-1 text-sm transition hover:border-purple-500"
+            >
+              Cap. {nextChapter.chapter_number} →
+            </Link>
+          )}
+        </div>
         {images.length > 0 && (
           <button
             onClick={() => setMode(mode === "panel" ? "overlay" : "panel")}
@@ -154,7 +231,7 @@ export default function ReaderPage() {
       {images.length > 0 && mode === "panel" && (
         <div className="flex gap-4">
           {/* Images */}
-          <div className="flex-1 space-y-1">
+          <div className="flex-1">
             {images.map((img, idx) => (
               <div
                 key={idx}
@@ -179,7 +256,7 @@ export default function ReaderPage() {
       )}
 
       {images.length > 0 && mode === "overlay" && (
-        <div className="mx-auto max-w-2xl space-y-1">
+        <div className="mx-auto max-w-2xl">
           {images.map((img, idx) => (
             <ImageOverlay
               key={idx}
