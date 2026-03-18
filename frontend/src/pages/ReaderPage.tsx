@@ -13,6 +13,7 @@ import {
 import ProgressBar from "../components/ProgressBar";
 import TranslationPanel from "../components/TranslationPanel";
 import ImageOverlay from "../components/ImageOverlay";
+import { useReadHistory } from "../hooks/useReadHistory";
 
 type DisplayMode = "panel" | "overlay";
 
@@ -30,6 +31,7 @@ export default function ReaderPage() {
   const [comic, setComic] = useState<Comic | null>(null);
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [allChapters, setAllChapters] = useState<Chapter[]>([]);
+  const { markAsRead } = useReadHistory();
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const imageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const observerRef = useRef<IntersectionObserver>(undefined);
@@ -55,6 +57,7 @@ export default function ReaderPage() {
           setChapter(ch);
         }
 
+        markAsRead(chapId, comicId);
         const { progress: p } = await startTranslation(comicId, chapId);
         if (cancelled) return;
         setProgress(p);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getChapters, type Comic, type Chapter } from "../api/client";
+import { useReadHistory } from "../hooks/useReadHistory";
 
 export default function ComicDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -8,6 +9,7 @@ export default function ComicDetailPage() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { isRead, getLastReadChapterId } = useReadHistory();
 
   function load() {
     if (!id) return;
@@ -133,19 +135,34 @@ export default function ComicDetailPage() {
         </div>
 
         <h2 className="mb-4 text-xl font-semibold">Chapters</h2>
+        {(() => {
+          const lastId = getLastReadChapterId(comic.id);
+          if (!lastId) return null;
+          return (
+            <Link
+              to={`/comic/${comic.id}/read/${lastId}`}
+              className="mb-4 flex items-center gap-2 rounded-lg border border-purple-700 bg-purple-900/30 px-4 py-3 text-sm text-purple-300 transition hover:border-purple-500 hover:bg-purple-900/50"
+            >
+              ▶ Continuar lendo
+            </Link>
+          );
+        })()}
         <div className="grid gap-2">
           {chapters.map((ch) => {
             const isFree = ch.is_free === 1;
+            const read = isRead(ch.id);
             return isFree ? (
               <Link
                 key={ch.id}
                 to={`/comic/${comic.id}/read/${ch.id}`}
                 className="flex items-center justify-between rounded-lg border border-gray-800 px-4 py-3 transition hover:border-purple-500 hover:bg-gray-900"
               >
-                <span>
+                <span className={read ? "text-gray-400" : undefined}>
                   Ch. {ch.chapter_number} — {ch.title || "Untitled"}
                 </span>
-                <span className="text-xs text-green-400">FREE</span>
+                {read && (
+                  <span className="text-xs text-green-500">✓ Lido</span>
+                )}
               </Link>
             ) : (
               <div
