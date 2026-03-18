@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useLayoutEffect } from "react";
 import type { TranslationEntry } from "../api/client";
 
 interface ImageOverlayProps {
@@ -29,9 +29,52 @@ function calcFontSizePx(
   const area = width * height;
   const base = Math.sqrt(area) * 0.45;
   const adjusted = base / Math.sqrt(Math.max(textLength / 8, 1));
-  const clamped = Math.max(1.2, Math.min(5.0, adjusted * 2));
+  const clamped = Math.max(1.2, Math.min(5.0, adjusted * 1.5));
   const px = (clamped / 100) * containerWidth;
-  return Math.max(16, px);
+  return Math.max(11, px);
+}
+
+interface BubbleProps {
+  entry: TranslationEntry;
+  fontSize: number;
+  padding: string;
+}
+
+function TranslationBubble({ entry, fontSize: initialFontSize, padding }: BubbleProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [fontSize, setFontSize] = useState(initialFontSize);
+
+  useLayoutEffect(() => {
+    setFontSize(initialFontSize);
+  }, [initialFontSize]);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (el.scrollHeight > el.clientHeight + 1) {
+      setFontSize(prev => Math.max(10, prev * 0.9));
+    }
+  }, [fontSize]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute flex items-center justify-center bg-white text-center leading-tight text-black overflow-hidden rounded"
+      style={{
+        left: `${entry.position.x}%`,
+        top: `${entry.position.y}%`,
+        width: `${entry.position.width}%`,
+        height: `${entry.position.height}%`,
+        fontSize: `${fontSize}px`,
+        padding,
+        boxSizing: "border-box",
+        fontFamily: "'Bangers', cursive",
+        letterSpacing: "0.04em",
+      }}
+    >
+      {entry.translated}
+    </div>
+  );
 }
 
 export default function ImageOverlay({ proxyUrl, entries, index }: ImageOverlayProps) {
@@ -67,23 +110,12 @@ export default function ImageOverlay({ proxyUrl, entries, index }: ImageOverlayP
         );
 
         return (
-          <div
+          <TranslationBubble
             key={eIdx}
-            className="absolute flex items-center justify-center bg-white text-center leading-tight text-black overflow-hidden rounded"
-            style={{
-              left: `${entry.position.x}%`,
-              top: `${entry.position.y}%`,
-              width: `${entry.position.width}%`,
-              height: `${entry.position.height}%`,
-              fontSize: `${fontSize}px`,
-              padding,
-              boxSizing: "border-box",
-              fontFamily: "'Bangers', cursive",
-              letterSpacing: "0.04em",
-            }}
-          >
-            {entry.translated}
-          </div>
+            entry={entry}
+            fontSize={fontSize}
+            padding={padding}
+          />
         );
       })}
     </div>
