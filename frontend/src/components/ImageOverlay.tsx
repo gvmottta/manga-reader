@@ -5,6 +5,7 @@ interface ImageOverlayProps {
   proxyUrl: string;
   entries: TranslationEntry[];
   index: number;
+  translating?: boolean;
 }
 
 function getShapePadding(shape: string) {
@@ -15,8 +16,19 @@ function getShapePadding(shape: string) {
       return "12% 14%";
     case "ellipse":
     default:
-      // Elliptical balloons need more padding so text stays inside the inscribed rectangle
       return "14% 16%";
+  }
+}
+
+function getShapeClass(shape: string) {
+  switch (shape) {
+    case "rectangle":
+      return "rounded-sm";
+    case "cloud":
+      return "rounded-2xl";
+    case "ellipse":
+    default:
+      return "rounded-full";
   }
 }
 
@@ -44,6 +56,10 @@ function TranslationBubble({ entry, fontSize: initialFontSize, padding }: Bubble
   const ref = useRef<HTMLDivElement>(null);
   const [fontSize, setFontSize] = useState(initialFontSize);
 
+  const shape = entry.shape || "ellipse";
+  const isSfx = entry.type === "sfx";
+  const shapeClass = getShapeClass(shape);
+
   useLayoutEffect(() => {
     setFontSize(initialFontSize);
   }, [initialFontSize]);
@@ -59,7 +75,7 @@ function TranslationBubble({ entry, fontSize: initialFontSize, padding }: Bubble
   return (
     <div
       ref={ref}
-      className="absolute flex items-center justify-center bg-white text-center leading-tight text-black overflow-hidden rounded"
+      className={`absolute flex items-center justify-center bg-white text-center leading-tight overflow-hidden ${shapeClass} ${isSfx ? "text-yellow-400 italic" : "text-black"}`}
       style={{
         left: `${entry.position.x}%`,
         top: `${entry.position.y}%`,
@@ -77,9 +93,10 @@ function TranslationBubble({ entry, fontSize: initialFontSize, padding }: Bubble
   );
 }
 
-export default function ImageOverlay({ proxyUrl, entries, index }: ImageOverlayProps) {
+export default function ImageOverlay({ proxyUrl, entries, index, translating }: ImageOverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [showTranslations, setShowTranslations] = useState(true);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -92,32 +109,46 @@ export default function ImageOverlay({ proxyUrl, entries, index }: ImageOverlayP
   }, []);
 
   return (
-    <div className="relative block w-full" id={`image-${index}`} ref={containerRef}>
+    <div
+      className="relative block w-full"
+      id={`image-${index}`}
+      ref={containerRef}
+      onClick={() => setShowTranslations(prev => !prev)}
+    >
       <img
         src={proxyUrl}
         alt={`Panel ${index + 1}`}
         className="block w-full"
         loading="lazy"
       />
-      {containerWidth > 0 && entries.map((entry, eIdx) => {
-        const shape = entry.shape || "ellipse";
-        const padding = getShapePadding(shape);
-        const fontSize = calcFontSizePx(
-          entry.position.width,
-          entry.position.height,
-          entry.translated.length,
-          containerWidth
-        );
+      {/* Translating badge (2.2) */}
+      {entries.length === 0 && translating && (
+        <div className="pointer-events-none absolute bottom-2 right-2 animate-pulse rounded-full bg-black/70 px-2 py-1 text-xs text-white">
+          ⏳ Traduzindo
+        </div>
+      )}
+      {/* Translations with tap-to-toggle (3.2) */}
+      <div className={`transition-opacity duration-200 ${showTranslations ? "opacity-100" : "opacity-0"}`}>
+        {containerWidth > 0 && entries.map((entry, eIdx) => {
+          const shape = entry.shape || "ellipse";
+          const padding = getShapePadding(shape);
+          const fontSize = calcFontSizePx(
+            entry.position.width,
+            entry.position.height,
+            entry.translated.length,
+            containerWidth
+          );
 
-        return (
-          <TranslationBubble
-            key={eIdx}
-            entry={entry}
-            fontSize={fontSize}
-            padding={padding}
-          />
-        );
-      })}
+          return (
+            <TranslationBubble
+              key={eIdx}
+              entry={entry}
+              fontSize={fontSize}
+              padding={padding}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

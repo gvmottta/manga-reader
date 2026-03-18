@@ -25,12 +25,20 @@ export default function ReaderPage() {
   const [progress, setProgress] = useState<TranslationProgress | null>(null);
   const [mode, setMode] = useState<DisplayMode>("overlay");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [showCounter, setShowCounter] = useState(false);
   const [error, setError] = useState("");
   const [comic, setComic] = useState<Comic | null>(null);
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [allChapters, setAllChapters] = useState<Chapter[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const imageRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const observerRef = useRef<IntersectionObserver>(undefined);
+  const counterTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Scroll to top on chapter change (1.1)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [chapId]);
 
   // Start translation and poll
   useEffect(() => {
@@ -51,14 +59,12 @@ export default function ReaderPage() {
         if (cancelled) return;
         setProgress(p);
 
-        // Fetch images immediately (even without translations)
         const { images } = await getChapterImages(comicId, chapId);
         if (cancelled) return;
         setImages(images);
 
         if (p.status === "done") return;
 
-        // Poll status + re-fetch images when completed changes
         lastCompleted = p.completed;
         pollRef.current = setInterval(async () => {
           try {
@@ -92,8 +98,7 @@ export default function ReaderPage() {
     };
   }, [comicId, chapId]);
 
-  // IntersectionObserver for active image tracking
-  const observerRef = useRef<IntersectionObserver>(undefined);
+  // IntersectionObserver — always active (2.3)
   const setImageRef = useCallback(
     (el: HTMLDivElement | null, idx: number) => {
       imageRefs.current[idx] = el;
@@ -102,14 +107,22 @@ export default function ReaderPage() {
   );
 
   useEffect(() => {
-    if (images.length === 0 || mode !== "panel") return;
+    if (images.length === 0) return;
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
             const idx = Number(entry.target.getAttribute("data-index"));
-            if (!isNaN(idx)) setActiveIndex(idx);
+            if (!isNaN(idx)) {
+              setActiveIndex(idx);
+              setShowCounter(true);
+              clearTimeout(counterTimerRef.current);
+              counterTimerRef.current = setTimeout(
+                () => setShowCounter(false),
+                2000
+              );
+            }
           }
         }
       },
@@ -121,11 +134,11 @@ export default function ReaderPage() {
     });
 
     return () => observerRef.current?.disconnect();
-  }, [images, mode]);
+  }, [images]);
 
   if (error) {
     return (
-      <div className="text-center">
+      <div className="px-4 py-6 text-center">
         <p className="text-red-400">{error}</p>
         <button
           onClick={() => window.location.reload()}
@@ -145,8 +158,34 @@ export default function ReaderPage() {
   const nextChapter =
     currentIdx < freeChapters.length - 1 ? freeChapters[currentIdx + 1] : null;
 
+  const isTranslating =
+    progress !== null &&
+    progress.status !== "done" &&
+    progress.status !== "error";
+
+  const navLinks = (
+    <div className="flex gap-2">
+      {prevChapter && (
+        <Link
+          to={`/comic/${comicId}/read/${prevChapter.id}`}
+          className="rounded border border-gray-700 px-3 py-1 text-sm transition hover:border-purple-500"
+        >
+          ← Cap. {prevChapter.chapter_number}
+        </Link>
+      )}
+      {nextChapter && (
+        <Link
+          to={`/comic/${comicId}/read/${nextChapter.id}`}
+          className="rounded border border-gray-700 px-3 py-1 text-sm transition hover:border-purple-500"
+        >
+          Cap. {nextChapter.chapter_number} →
+        </Link>
+      )}
+    </div>
+  );
+
   return (
-    <div>
+    <div className="px-4 py-4">
       {/* Chapter info header */}
       {comic && (
         <div className="mb-4 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3">
@@ -185,26 +224,9 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Controls */}
+      {/* Top controls */}
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex gap-2">
-          {prevChapter && (
-            <Link
-              to={`/comic/${comicId}/read/${prevChapter.id}`}
-              className="rounded border border-gray-700 px-3 py-1 text-sm transition hover:border-purple-500"
-            >
-              ← Cap. {prevChapter.chapter_number}
-            </Link>
-          )}
-          {nextChapter && (
-            <Link
-              to={`/comic/${comicId}/read/${nextChapter.id}`}
-              className="rounded border border-gray-700 px-3 py-1 text-sm transition hover:border-purple-500"
-            >
-              Cap. {nextChapter.chapter_number} →
-            </Link>
-          )}
-        </div>
+        {navLinks}
         {images.length > 0 && (
           <button
             onClick={() => setMode(mode === "panel" ? "overlay" : "panel")}
@@ -215,7 +237,7 @@ export default function ReaderPage() {
         )}
       </div>
 
-      {/* Inline progress bar above images */}
+      {/* Progress bar */}
       {progress && progress.status !== "done" && progress.total > 0 && (
         <div className="mb-4">
           <ProgressBar
@@ -227,10 +249,9 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Reader */}
+      {/* Panel mode */}
       {images.length > 0 && mode === "panel" && (
         <div className="flex gap-4">
-          {/* Images */}
           <div className="flex-1">
             {images.map((img, idx) => (
               <div
@@ -247,24 +268,53 @@ export default function ReaderPage() {
               </div>
             ))}
           </div>
-
-          {/* Side panel */}
           <div className="sticky top-0 hidden h-screen w-80 shrink-0 overflow-y-auto lg:block">
             <TranslationPanel images={images} activeIndex={activeIndex} />
           </div>
         </div>
       )}
 
+      {/* Overlay mode */}
       {images.length > 0 && mode === "overlay" && (
         <div className="mx-auto max-w-2xl">
           {images.map((img, idx) => (
-            <ImageOverlay
+            <div
               key={idx}
-              proxyUrl={img.proxyUrl}
-              entries={img.translation?.overlayData || []}
-              index={idx}
-            />
+              ref={(el) => setImageRef(el, idx)}
+              data-index={idx}
+            >
+              <ImageOverlay
+                proxyUrl={img.proxyUrl}
+                entries={img.translation?.overlayData || []}
+                translating={!img.translation && isTranslating}
+                index={idx}
+              />
+            </div>
           ))}
+        </div>
+      )}
+
+      {/* Bottom navigation (1.3) */}
+      {images.length > 0 && (
+        <div className="mt-6 flex items-center justify-between border-t border-gray-800 pt-4">
+          {navLinks}
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="rounded border border-gray-700 px-3 py-1 text-sm transition hover:border-purple-500"
+          >
+            ↑ Topo
+          </button>
+        </div>
+      )}
+
+      {/* Page counter (3.1) */}
+      {images.length > 0 && (
+        <div
+          className={`pointer-events-none fixed bottom-4 left-4 rounded-full bg-black/60 px-3 py-1 text-sm text-white transition-opacity duration-300 ${
+            showCounter ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          {activeIndex + 1} / {images.length}
         </div>
       )}
     </div>

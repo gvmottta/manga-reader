@@ -15,7 +15,10 @@ export default defineConfig({
         description: "Read and translate manga with ease",
         theme_color: "#1e1b4b",
         background_color: "#0f0d1a",
+        start_url: "/",
         display: "standalone",
+        display_override: ["window-controls-overlay", "standalone"],
+        orientation: "portrait",
         icons: [
           {
             src: "pwa-192x192.png",
