@@ -69,7 +69,7 @@ export default function ImageOverlay({ proxyUrl, entries, index }: ImageOverlayP
         return (
           <div
             key={eIdx}
-            className="absolute flex items-center justify-center bg-white/80 text-center leading-tight text-black overflow-hidden rounded"
+            className="absolute flex items-center justify-center bg-white text-center leading-tight text-black overflow-hidden rounded"
             style={{
               left: `${entry.position.x}%`,
               top: `${entry.position.y}%`,
