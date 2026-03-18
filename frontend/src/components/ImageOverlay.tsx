@@ -23,13 +23,13 @@ function calcFontSize(width: number, height: number, textLength: number): string
   const area = width * height;
   const base = Math.sqrt(area) * 0.45;
   const adjusted = base / Math.sqrt(Math.max(textLength / 8, 1));
-  const clamped = Math.max(0.45, Math.min(1.6, adjusted));
-  return `${clamped}vw`;
+  const clamped = Math.max(0.6, Math.min(2.5, adjusted));
+  return `max(10px, ${clamped}cqw)`;
 }
 
 export default function ImageOverlay({ proxyUrl, entries, index }: ImageOverlayProps) {
   return (
-    <div className="relative inline-block w-full" id={`image-${index}`}>
+    <div className="relative inline-block w-full" id={`image-${index}`} style={{ containerType: "inline-size" }}>
       <img
         src={proxyUrl}
         alt={`Panel ${index + 1}`}
