@@ -15,7 +15,7 @@ export default function ComicDetailPage() {
     getChapters(Number(id))
       .then(({ comic, chapters }) => {
         setComic(comic);
-        setChapters([...chapters].sort((a, b) => b.chapter_number - a.chapter_number));
+        setChapters([...chapters].sort((a, b) => (b.chapter_number ?? 0) - (a.chapter_number ?? 0)));
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
