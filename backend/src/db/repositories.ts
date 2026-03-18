@@ -205,3 +205,10 @@ export function getTranslation(
     targetLang
   ) as TranslationRow | undefined;
 }
+
+const deleteTranslationsByChapterStmt = db.prepare(
+  "DELETE FROM translations WHERE chapter_id = ?"
+);
+export function deleteTranslationsByChapter(chapterId: number): void {
+  deleteTranslationsByChapterStmt.run(chapterId);
+}

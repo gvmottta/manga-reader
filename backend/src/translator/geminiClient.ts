@@ -44,17 +44,25 @@ export async function translateMangaPanel(
   imageUrl: string,
   maxRetries = 2
 ): Promise<TranslationEntry[]> {
-  const imageResponse = await fetch(imageUrl);
+  console.log(`[gemini] Fetching image: ${imageUrl}`);
+  const imageResponse = await fetch(imageUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      Referer: "https://qtoon.com/",
+    },
+  });
   if (!imageResponse.ok) {
-    throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+    throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageUrl}`);
   }
   const imageBuffer = await imageResponse.arrayBuffer();
   const base64Image = Buffer.from(imageBuffer).toString("base64");
 
   const contentType = imageResponse.headers.get("content-type") || "image/webp";
+  console.log(`[gemini] Image fetched, size: ${imageBuffer.byteLength} bytes, type: ${contentType}`);
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
+      console.log(`[gemini] Sending to Gemini (attempt ${attempt + 1}/${maxRetries + 1}): ${imageUrl}`);
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: [
@@ -74,10 +82,13 @@ export async function translateMangaPanel(
       });
 
       const text = response.text ?? "";
+      console.log(`[gemini] Response received, length: ${text.length} chars`);
       const entries = parseGeminiResponse(text);
+      console.log(`[gemini] Parsed ${entries.length} entries from: ${imageUrl}`);
       return entries;
     } catch (error: unknown) {
       const err = error as { status?: number; message?: string };
+      console.error(`[gemini] Error on attempt ${attempt + 1}: ${err.message} (status: ${err.status})`);
       if (err.status === 429) {
         // Rate limited - wait longer
         await new Promise((r) =>

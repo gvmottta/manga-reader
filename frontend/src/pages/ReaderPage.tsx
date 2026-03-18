@@ -98,6 +98,50 @@ export default function ReaderPage() {
     };
   }, [comicId, chapId]);
 
+  async function handleRetry() {
+    clearInterval(pollRef.current);
+    setProgress(null);
+    setImages([]);
+    let cancelled = false;
+    let lastCompleted = -1;
+
+    try {
+      const { progress: p } = await startTranslation(comicId, chapId, true);
+      setProgress(p);
+
+      const { images } = await getChapterImages(comicId, chapId);
+      setImages(images);
+
+      if (p.status === "done") return;
+
+      lastCompleted = p.completed;
+      pollRef.current = setInterval(async () => {
+        try {
+          const status = await getTranslationStatus(comicId, chapId);
+          if (cancelled) return;
+          setProgress(status);
+
+          if (status.completed > lastCompleted) {
+            lastCompleted = status.completed;
+            const { images } = await getChapterImages(comicId, chapId);
+            if (!cancelled) setImages(images);
+          }
+
+          if (status.status === "done" || status.status === "error") {
+            clearInterval(pollRef.current);
+          }
+        } catch {
+          // ignore poll errors
+        }
+      }, 2000);
+    } catch (err) {
+      if (!cancelled)
+        setError(err instanceof Error ? err.message : "Failed to retry");
+    }
+
+    return () => { cancelled = true; };
+  }
+
   // IntersectionObserver — always active (2.3)
   const setImageRef = useCallback(
     (el: HTMLDivElement | null, idx: number) => {
@@ -238,13 +282,14 @@ export default function ReaderPage() {
       </div>
 
       {/* Progress bar */}
-      {progress && progress.status !== "done" && progress.total > 0 && (
+      {progress && progress.total > 0 && (
         <div className="mb-4">
           <ProgressBar
             completed={progress.completed}
             total={progress.total}
             status={progress.status}
             error={progress.error}
+            onRetry={handleRetry}
           />
         </div>
       )}

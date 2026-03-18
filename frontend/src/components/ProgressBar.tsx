@@ -3,9 +3,10 @@ interface ProgressBarProps {
   total: number;
   status: string;
   error?: string;
+  onRetry?: () => void;
 }
 
-export default function ProgressBar({ completed, total, status, error }: ProgressBarProps) {
+export default function ProgressBar({ completed, total, status, error, onRetry }: ProgressBarProps) {
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
@@ -14,7 +15,18 @@ export default function ProgressBar({ completed, total, status, error }: Progres
         <span>
           {status === "error" ? "Error" : status === "done" ? "Done" : `Translating...`}
         </span>
-        <span>{completed}/{total} images ({pct}%)</span>
+        <div className="flex items-center gap-2">
+          <span>{completed}/{total} images ({pct}%)</span>
+          {status === "done" && onRetry && (
+            <button
+              onClick={onRetry}
+              title="Refazer tradução"
+              className="opacity-30 transition-opacity hover:opacity-100"
+            >
+              ↺
+            </button>
+          )}
+        </div>
       </div>
       <div className="h-3 w-full rounded-full bg-gray-800">
         <div
@@ -24,7 +36,19 @@ export default function ProgressBar({ completed, total, status, error }: Progres
           style={{ width: `${pct}%` }}
         />
       </div>
-      {error && <p className="mt-1 text-sm text-red-400">{error}</p>}
+      {error && (
+        <div className="mt-1 flex items-center gap-2">
+          <p className="text-sm text-red-400">{error}</p>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="text-sm text-red-400 hover:text-red-300"
+            >
+              ↺ Tentar novamente
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

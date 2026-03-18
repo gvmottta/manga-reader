@@ -13,6 +13,7 @@ import {
   getAllComics,
   getTranslationsByChapter,
   updateChapterImages,
+  deleteTranslationsByChapter,
 } from "../db/repositories.js";
 import { translateChapter } from "../translator/translationService.js";
 import {
@@ -123,9 +124,14 @@ mangaRouter.post(
         return;
       }
 
+      // Force retry: delete cached translations and reset job state
+      if (req.query.force === "true") {
+        deleteTranslationsByChapter(chapterId);
+      }
+
       // Check if already translating or pending
       const existing = getJobProgress(chapterId);
-      if (existing && (existing.status === "translating" || existing.status === "pending")) {
+      if (!req.query.force && existing && (existing.status === "translating" || existing.status === "pending")) {
         res.json({ message: "Translation already in progress", progress: existing });
         return;
       }

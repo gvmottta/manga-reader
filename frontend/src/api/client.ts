@@ -79,11 +79,11 @@ export async function getChapters(
 
 export async function startTranslation(
   comicId: number,
-  chapterId: number
+  chapterId: number,
+  force = false
 ): Promise<{ message: string; progress: TranslationProgress }> {
-  return apiFetch(`/api/manga/${comicId}/chapters/${chapterId}/translate`, {
-    method: "POST",
-  });
+  const url = `/api/manga/${comicId}/chapters/${chapterId}/translate${force ? "?force=true" : ""}`;
+  return apiFetch(url, { method: "POST" });
 }
 
 export async function getTranslationStatus(
