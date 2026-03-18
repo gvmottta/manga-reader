@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+frontend/tsconfig.tsbuildinfo
+
+# Database
+*.db
+*.db-wal
+*.db-shm
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Claude
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+manga-reader/
