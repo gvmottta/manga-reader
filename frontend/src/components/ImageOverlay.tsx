@@ -92,11 +92,11 @@ export default function ImageOverlay({ proxyUrl, entries, index }: ImageOverlayP
   }, []);
 
   return (
-    <div className="relative inline-block w-full" id={`image-${index}`} ref={containerRef}>
+    <div className="relative block w-full" id={`image-${index}`} ref={containerRef}>
       <img
         src={proxyUrl}
         alt={`Panel ${index + 1}`}
-        className="w-full"
+        className="block w-full"
         loading="lazy"
       />
       {containerWidth > 0 && entries.map((entry, eIdx) => {
