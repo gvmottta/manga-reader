@@ -23,8 +23,8 @@ function calcFontSize(width: number, height: number, textLength: number): string
   const area = width * height;
   const base = Math.sqrt(area) * 0.45;
   const adjusted = base / Math.sqrt(Math.max(textLength / 8, 1));
-  const clamped = Math.max(0.6, Math.min(2.5, adjusted));
-  return `max(10px, ${clamped}cqw)`;
+  const clamped = Math.max(1.2, Math.min(5.0, adjusted * 2));
+  return `max(20px, ${clamped}cqw)`;
 }
 
 export default function ImageOverlay({ proxyUrl, entries, index }: ImageOverlayProps) {
