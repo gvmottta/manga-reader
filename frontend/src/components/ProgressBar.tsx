@@ -17,7 +17,7 @@ export default function ProgressBar({ completed, total, status, error, onRetry }
         </span>
         <div className="flex items-center gap-2">
           <span>{completed}/{total} images ({pct}%)</span>
-          {status === "done" && onRetry && (
+          {onRetry && (
             <button
               onClick={onRetry}
               title="Refazer tradução"
