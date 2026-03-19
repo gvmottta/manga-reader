@@ -70,7 +70,7 @@ export async function translateChapter(
             translatedText: translatedTexts || undefined,
             targetLang: "pt-BR",
             overlayData: JSON.stringify(entries),
-            modelUsed: "gemini-2.5-flash",
+            modelUsed: "gemini-2.5-flash-lite",
           });
 
           completed++;

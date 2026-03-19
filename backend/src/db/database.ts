@@ -4,7 +4,7 @@ import path from "path";
 const DB_PATH = path.resolve("manga-reader.db");
 
 const db: DatabaseType = new Database(DB_PATH);
-db.pragma("journal_mode = WAL");
+
 db.pragma("foreign_keys = ON");
 
 // Initialize schema immediately so tables exist before any prepared statements run
@@ -45,7 +45,7 @@ db.exec(`
     translated_text TEXT,
     target_lang TEXT NOT NULL DEFAULT 'pt-BR',
     overlay_data TEXT,
-    model_used TEXT NOT NULL DEFAULT 'gemini-2.5-flash',
+    model_used TEXT NOT NULL DEFAULT 'gemini-2.5-flash-lite',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(chapter_id, image_index, target_lang)
   );

@@ -59,7 +59,7 @@ export async function translateMangaPanel(
   console.log(`[gemini] Image fetched, original size: ${imageBuffer.byteLength} bytes`);
 
   const resizedBuffer = await sharp(Buffer.from(imageBuffer))
-    .resize(1024, undefined, { fit: "inside", withoutEnlargement: true })
+    .resize(768, undefined, { fit: "inside", withoutEnlargement: true })
     .webp({ quality: 85 })
     .toBuffer();
   const base64Image = resizedBuffer.toString("base64");
@@ -70,7 +70,7 @@ export async function translateMangaPanel(
     try {
       console.log(`[gemini] Sending to Gemini (attempt ${attempt + 1}/${maxRetries + 1}): ${imageUrl}`);
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash-lite",
         contents: [
           {
             role: "user",
