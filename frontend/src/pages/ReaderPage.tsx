@@ -11,11 +11,8 @@ import {
   type Chapter,
 } from "../api/client";
 import ProgressBar from "../components/ProgressBar";
-import TranslationPanel from "../components/TranslationPanel";
 import ImageOverlay from "../components/ImageOverlay";
 import { useReadHistory } from "../hooks/useReadHistory";
-
-type DisplayMode = "panel" | "overlay";
 
 export default function ReaderPage() {
   const { id, chapterId } = useParams<{ id: string; chapterId: string }>();
@@ -24,7 +21,6 @@ export default function ReaderPage() {
 
   const [images, setImages] = useState<ChapterImage[]>([]);
   const [progress, setProgress] = useState<TranslationProgress | null>(null);
-  const [mode, setMode] = useState<DisplayMode>("overlay");
   const [activeIndex, setActiveIndex] = useState(0);
   const [showCounter, setShowCounter] = useState(false);
   const [error, setError] = useState("");
@@ -274,14 +270,6 @@ export default function ReaderPage() {
       {/* Top controls */}
       <div className="mb-4 flex items-center justify-between">
         {navLinks}
-        {images.length > 0 && (
-          <button
-            onClick={() => setMode(mode === "panel" ? "overlay" : "panel")}
-            className="rounded border border-gray-700 px-3 py-1 text-sm transition hover:border-purple-500"
-          >
-            {mode === "panel" ? "Switch to Overlay" : "Switch to Panel"}
-          </button>
-        )}
       </div>
 
       {/* Progress bar */}
@@ -297,33 +285,8 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Panel mode */}
-      {images.length > 0 && mode === "panel" && (
-        <div className="flex gap-4">
-          <div className="flex-1">
-            {images.map((img, idx) => (
-              <div
-                key={idx}
-                ref={(el) => setImageRef(el, idx)}
-                data-index={idx}
-              >
-                <img
-                  src={img.proxyUrl}
-                  alt={`Panel ${idx + 1}`}
-                  className="w-full"
-                  loading="lazy"
-                />
-              </div>
-            ))}
-          </div>
-          <div className="sticky top-0 hidden h-screen w-80 shrink-0 overflow-y-auto lg:block">
-            <TranslationPanel images={images} activeIndex={activeIndex} />
-          </div>
-        </div>
-      )}
-
-      {/* Overlay mode */}
-      {images.length > 0 && mode === "overlay" && (
+      {/* Overlay */}
+      {images.length > 0 && (
         <div className="mx-auto max-w-2xl">
           {images.map((img, idx) => (
             <div
