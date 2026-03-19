@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import sharp from "sharp";
 import { config } from "../config.js";
 import { parseGeminiResponse } from "./parseResponse.js";
 import type { TranslationEntry } from "./types.js";
@@ -55,23 +56,28 @@ export async function translateMangaPanel(
     throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageUrl}`);
   }
   const imageBuffer = await imageResponse.arrayBuffer();
-  const base64Image = Buffer.from(imageBuffer).toString("base64");
+  console.log(`[gemini] Image fetched, original size: ${imageBuffer.byteLength} bytes`);
 
-  const contentType = imageResponse.headers.get("content-type") || "image/webp";
-  console.log(`[gemini] Image fetched, size: ${imageBuffer.byteLength} bytes, type: ${contentType}`);
+  const resizedBuffer = await sharp(Buffer.from(imageBuffer))
+    .resize(1024, undefined, { fit: "inside", withoutEnlargement: true })
+    .webp({ quality: 85 })
+    .toBuffer();
+  const base64Image = resizedBuffer.toString("base64");
+  const mimeType = "image/webp";
+  console.log(`[gemini] Resized to: ${resizedBuffer.byteLength} bytes (webp)`);
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       console.log(`[gemini] Sending to Gemini (attempt ${attempt + 1}/${maxRetries + 1}): ${imageUrl}`);
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         contents: [
           {
             role: "user",
             parts: [
               {
                 inlineData: {
-                  mimeType: contentType,
+                  mimeType: mimeType,
                   data: base64Image,
                 },
               },
