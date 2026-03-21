@@ -156,6 +156,81 @@ function clusterToText(cluster: WordBox[]): string {
     .join(" ");
 }
 
+/**
+ * Detects overlapping OcrBlocks and shrinks them to eliminate overlap.
+ * When two blocks overlap, each is pushed away from the overlap zone
+ * proportionally to its size.
+ */
+function resolveOverlaps(blocks: OcrBlock[]): OcrBlock[] {
+  if (blocks.length <= 1) return blocks;
+
+  // Work on a mutable copy of positions
+  const positions = blocks.map((b) => ({ ...b.position }));
+
+  // Iterate multiple passes since resolving one pair may affect others
+  for (let pass = 0; pass < 3; pass++) {
+    let anyOverlap = false;
+
+    for (let i = 0; i < positions.length; i++) {
+      for (let j = i + 1; j < positions.length; j++) {
+        const a = positions[i];
+        const b = positions[j];
+
+        // Calculate overlap
+        const overlapX = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+        const overlapY = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+
+        if (overlapX <= 0 || overlapY <= 0) continue;
+        anyOverlap = true;
+
+        // Resolve along the axis with less overlap (more natural separation)
+        if (overlapX < overlapY) {
+          // Shrink horizontally
+          const halfOverlap = overlapX / 2 + 0.5; // +0.5% gap
+          const aCenterX = a.x + a.width / 2;
+          const bCenterX = b.x + b.width / 2;
+          if (aCenterX <= bCenterX) {
+            // a is left, b is right — shrink a's right edge, b's left edge
+            a.width = Math.max(a.width - halfOverlap, a.width * 0.5);
+            const shrinkB = halfOverlap;
+            b.x = Math.min(b.x + shrinkB, b.x + b.width * 0.4);
+            b.width = Math.max(b.width - shrinkB, b.width * 0.5);
+          } else {
+            b.width = Math.max(b.width - halfOverlap, b.width * 0.5);
+            const shrinkA = halfOverlap;
+            a.x = Math.min(a.x + shrinkA, a.x + a.width * 0.4);
+            a.width = Math.max(a.width - shrinkA, a.width * 0.5);
+          }
+        } else {
+          // Shrink vertically
+          const halfOverlap = overlapY / 2 + 0.5;
+          const aCenterY = a.y + a.height / 2;
+          const bCenterY = b.y + b.height / 2;
+          if (aCenterY <= bCenterY) {
+            // a is above, b is below
+            a.height = Math.max(a.height - halfOverlap, a.height * 0.5);
+            const shrinkB = halfOverlap;
+            b.y = Math.min(b.y + shrinkB, b.y + b.height * 0.4);
+            b.height = Math.max(b.height - shrinkB, b.height * 0.5);
+          } else {
+            b.height = Math.max(b.height - halfOverlap, b.height * 0.5);
+            const shrinkA = halfOverlap;
+            a.y = Math.min(a.y + shrinkA, a.y + a.height * 0.4);
+            a.height = Math.max(a.height - shrinkA, a.height * 0.5);
+          }
+        }
+      }
+    }
+
+    if (!anyOverlap) break;
+  }
+
+  return blocks.map((b, i) => ({
+    ...b,
+    position: positions[i],
+  }));
+}
+
 export async function ocrImage(
   imageUrl: string,
   maxRetries = 3
@@ -250,10 +325,11 @@ export async function ocrImage(
       blocks.push({ text, position });
     }
 
+    const resolved = resolveOverlaps(blocks);
     console.log(
-      `[ocr] Extracted ${blocks.length} clusters from ${allWords.length} words`
+      `[ocr] Extracted ${resolved.length} clusters from ${allWords.length} words`
     );
-    return blocks;
+    return resolved;
   }
 
   console.warn("[ocr] Max retries reached, returning empty blocks");
