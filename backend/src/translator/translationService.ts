@@ -11,7 +11,7 @@ import {
 import { scrapeChapterImages } from "../scraper/qtoonScraper.js";
 import type { TranslationProgress } from "./types.js";
 
-const OCR_CONCURRENCY = 3; // Azure CV F0: 20 calls/min — 3 parallel × ~4s/call ≈ safe
+const OCR_CONCURRENCY = 10;
 const GEMINI_BATCH_SIZE = 10;
 const MODEL_USED = "azure-cv+gemini-2.5-flash";
 

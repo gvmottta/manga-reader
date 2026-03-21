@@ -231,10 +231,7 @@ function resolveOverlaps(blocks: OcrBlock[]): OcrBlock[] {
   }));
 }
 
-export async function ocrImage(
-  imageUrl: string,
-  maxRetries = 3
-): Promise<OcrBlock[]> {
+export async function ocrImage(imageUrl: string): Promise<OcrBlock[]> {
   console.log(`[ocr] Fetching image: ${imageUrl}`);
   const imageResponse = await fetch(imageUrl, {
     headers: {
@@ -259,30 +256,21 @@ export async function ocrImage(
   const endpoint = config.azureVisionEndpoint.replace(/\/$/, "");
   const url = `${endpoint}/computervision/imageanalysis:analyze?api-version=2024-02-01&features=read`;
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Ocp-Apim-Subscription-Key": config.azureVisionKey,
-        "Content-Type": "application/octet-stream",
-      },
-      body: new Uint8Array(resized),
-    });
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Ocp-Apim-Subscription-Key": config.azureVisionKey,
+      "Content-Type": "application/octet-stream",
+    },
+    body: new Uint8Array(resized),
+  });
 
-    if (response.status === 429) {
-      const retryAfter =
-        parseInt(response.headers.get("Retry-After") ?? "5", 10) * 1000;
-      console.warn(`[ocr] Rate limited, retrying in ${retryAfter}ms...`);
-      await new Promise((r) => setTimeout(r, retryAfter));
-      continue;
-    }
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Azure CV error ${response.status}: ${errText}`);
+  }
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Azure CV error ${response.status}: ${errText}`);
-    }
-
-    const result = (await response.json()) as AzureResponse;
+  const result = (await response.json()) as AzureResponse;
 
     // Extract word-level bboxes (accurate) — LINE-level bboxes are unreliable
     // because Azure CV merges multiple speech bubbles into one huge line for webtoons.
@@ -330,8 +318,4 @@ export async function ocrImage(
       `[ocr] Extracted ${resolved.length} clusters from ${allWords.length} words`
     );
     return resolved;
-  }
-
-  console.warn("[ocr] Max retries reached, returning empty blocks");
-  return [];
 }
