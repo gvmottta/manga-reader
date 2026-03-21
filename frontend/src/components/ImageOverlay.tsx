@@ -9,16 +9,36 @@ interface ImageOverlayProps {
   translating?: boolean;
 }
 
-function getShapePadding(shape: string) {
+function getShapePaddingFractions(shape: string): { padY: number; padX: number } {
   switch (shape) {
     case "rectangle":
-      return "4% 6%";
+      return { padY: 0.15, padX: 0.12 };
     case "cloud":
-      return "12% 14%";
+      return { padY: 0.20, padX: 0.18 };
     case "ellipse":
     default:
-      return "14% 16%";
+      return { padY: 0.22, padX: 0.20 };
   }
+}
+
+/**
+ * Compute padding in pixels based on the element's own dimensions,
+ * not the container's width (which CSS % padding uses). This prevents
+ * tiny elements from being blown up by disproportionate padding.
+ */
+function calcPaddingPx(
+  widthPct: number,
+  heightPct: number,
+  containerWidth: number,
+  containerHeight: number,
+  shape: string
+): string {
+  const { padY, padX } = getShapePaddingFractions(shape);
+  const elW = (widthPct / 100) * containerWidth;
+  const elH = (heightPct / 100) * containerHeight;
+  const px = Math.max(2, padY * elH);
+  const py = Math.max(2, padX * elW);
+  return `${px}px ${py}px`;
 }
 
 function getShapeClass(shape: string) {
@@ -107,6 +127,7 @@ function TranslationBubble({ entry, fontSize: initialFontSize, padding }: Bubble
 export default function ImageOverlay({ proxyUrl, entries, index, translating }: ImageOverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
   const [showTranslations, setShowTranslations] = useState(true);
   const [showHint, setShowHint] = useState(false);
 
@@ -115,6 +136,7 @@ export default function ImageOverlay({ proxyUrl, entries, index, translating }: 
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
       setContainerWidth(entries[0].contentRect.width);
+      setContainerHeight(entries[0].contentRect.height);
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -155,9 +177,15 @@ export default function ImageOverlay({ proxyUrl, entries, index, translating }: 
       )}
       {/* Translations with tap-to-toggle (3.2) */}
       <div className={`absolute inset-0 overflow-hidden transition-opacity duration-200 ${showTranslations ? "opacity-100" : "opacity-0"}`}>
-        {containerWidth > 0 && entries.map((entry, eIdx) => {
+        {containerWidth > 0 && containerHeight > 0 && entries.map((entry, eIdx) => {
           const shape = entry.shape || "ellipse";
-          const padding = getShapePadding(shape);
+          const padding = calcPaddingPx(
+            entry.position.width,
+            entry.position.height,
+            containerWidth,
+            containerHeight,
+            shape
+          );
           const fontSize = calcFontSizePx(
             entry.position.width,
             entry.position.height,
