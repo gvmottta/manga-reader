@@ -11,7 +11,7 @@ import {
 import { scrapeChapterImages } from "../scraper/qtoonScraper.js";
 import type { TranslationProgress } from "./types.js";
 
-const OCR_CONCURRENCY = 10;
+const OCR_CONCURRENCY = 5;
 const GEMINI_BATCH_SIZE = 10;
 const MODEL_USED = "azure-cv+gemini-2.5-flash";
 

@@ -256,21 +256,31 @@ export async function ocrImage(imageUrl: string): Promise<OcrBlock[]> {
   const endpoint = config.azureVisionEndpoint.replace(/\/$/, "");
   const url = `${endpoint}/computervision/imageanalysis:analyze?api-version=2024-02-01&features=read`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Ocp-Apim-Subscription-Key": config.azureVisionKey,
-      "Content-Type": "application/octet-stream",
-    },
-    body: new Uint8Array(resized),
-  });
+  let response: Response | undefined;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Ocp-Apim-Subscription-Key": config.azureVisionKey,
+        "Content-Type": "application/octet-stream",
+      },
+      body: new Uint8Array(resized),
+    });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Azure CV error ${response.status}: ${errText}`);
+    if (response.status === 429) {
+      const wait = parseInt(response.headers.get("Retry-After") ?? "1", 10) * 1000;
+      await new Promise((r) => setTimeout(r, wait));
+      continue;
+    }
+    break;
   }
 
-  const result = (await response.json()) as AzureResponse;
+  if (!response!.ok) {
+    const errText = await response!.text();
+    throw new Error(`Azure CV error ${response!.status}: ${errText}`);
+  }
+
+  const result = (await response!.json()) as AzureResponse;
 
     // Extract word-level bboxes (accurate) — LINE-level bboxes are unreliable
     // because Azure CV merges multiple speech bubbles into one huge line for webtoons.
