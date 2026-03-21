@@ -128,7 +128,7 @@ export default function ImageOverlay({ proxyUrl, entries, index, translating }: 
         </div>
       )}
       {/* Translations with tap-to-toggle (3.2) */}
-      <div className={`transition-opacity duration-200 ${showTranslations ? "opacity-100" : "opacity-0"}`}>
+      <div className={`absolute inset-0 overflow-hidden transition-opacity duration-200 ${showTranslations ? "opacity-100" : "opacity-0"}`}>
         {containerWidth > 0 && entries.map((entry, eIdx) => {
           const shape = entry.shape || "ellipse";
           const padding = getShapePadding(shape);
