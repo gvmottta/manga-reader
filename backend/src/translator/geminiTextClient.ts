@@ -5,14 +5,23 @@ import type { OcrBlock } from "./ocrClient.js";
 
 const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
 
-function buildPrompt(blocks: OcrBlock[]): string {
-  const blockList = blocks.map((b, i) => `[${i}] "${b.text}"`).join("\n");
-  return `You are a manga translator. Below are text blocks extracted by OCR from a manga panel.
+const MODEL = "gemini-2.5-flash";
 
-Text blocks:
-${blockList}
+function buildBatchPrompt(imageBlocks: Map<number, OcrBlock[]>): string {
+  const sections: string[] = [];
+  let totalBlocks = 0;
 
-For each block, provide a Brazilian Portuguese (pt-BR) translation and classify it.
+  for (const [imgIdx, blocks] of imageBlocks) {
+    const blockList = blocks.map((b, i) => `[${i}] "${b.text}"`).join("\n");
+    sections.push(`=== IMAGE ${imgIdx} ===\n${blockList}`);
+    totalBlocks += blocks.length;
+  }
+
+  return `You are a manga translator. Below are text blocks extracted by OCR from multiple manga panels, grouped by image.
+
+${sections.join("\n\n")}
+
+For each block in each image, provide a Brazilian Portuguese (pt-BR) translation and classify it.
 
 Rules:
 - Translations must be natural and colloquial, appropriate for manga dialogue
@@ -21,110 +30,160 @@ Rules:
 - Thought bubbles: type "bubble", shape "cloud"
 - Speech bubbles (default): type "bubble", shape "ellipse"
 - Preserve exclamations, question marks, and emphasis
+- Do NOT translate watermarks, website URLs, or credit text — skip those blocks entirely
 
-Return ONLY a valid JSON array with exactly ${blocks.length} elements, in the same order:
-[
-  { "index": 0, "translated": "Eu não acredito!", "type": "bubble", "shape": "ellipse" }
-]`;
+Return ONLY valid JSON as an object keyed by image number. Each value is an array with one entry per block in that image:
+{
+  "${[...imageBlocks.keys()][0]}": [{ "index": 0, "translated": "Eu não acredito!", "type": "bubble", "shape": "ellipse" }]
+}`;
 }
 
-function parseTextResponse(
-  text: string,
-  blocks: OcrBlock[]
-): TranslationEntry[] {
+function cleanJsonResponse(text: string): string {
   let cleaned = text.trim();
   cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, "");
   cleaned = cleaned.replace(/\n?\s*```\s*$/i, "");
-  cleaned = cleaned.trim();
+  return cleaned.trim();
+}
+
+function validateEntry(
+  e: Record<string, unknown>,
+  blocks: OcrBlock[]
+): TranslationEntry | null {
+  const idx = Number(e.index);
+  if (isNaN(idx) || idx < 0 || idx >= blocks.length) return null;
+
+  const block = blocks[idx];
+  const translated = String(e.translated || "");
+  if (!translated) return null;
+
+  const typeRaw = String(e.type || "");
+  const shapeRaw = String(e.shape || "");
+
+  const type = (
+    ["bubble", "sfx", "narration"].includes(typeRaw) ? typeRaw : "bubble"
+  ) as TranslationEntry["type"];
+  const shape = (
+    ["ellipse", "rectangle", "cloud"].includes(shapeRaw)
+      ? shapeRaw
+      : "ellipse"
+  ) as TranslationEntry["shape"];
+
+  const { x, y, width, height } = block.position;
+  if (x < 0 || x > 100 || y < 0 || y > 100 || width <= 0 || height <= 0)
+    return null;
+
+  return {
+    original: block.text,
+    translated,
+    position: block.position,
+    type,
+    shape,
+  };
+}
+
+function parseBatchResponse(
+  text: string,
+  imageBlocks: Map<number, OcrBlock[]>
+): Map<number, TranslationEntry[]> {
+  const cleaned = cleanJsonResponse(text);
+  const result = new Map<number, TranslationEntry[]>();
+
+  // Initialize all images with empty arrays
+  for (const imgIdx of imageBlocks.keys()) {
+    result.set(imgIdx, []);
+  }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(cleaned);
   } catch {
-    const match = cleaned.match(/\[[\s\S]*\]/);
+    // Try to extract a JSON object from the response
+    const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) {
       try {
         parsed = JSON.parse(match[0]);
       } catch {
-        return [];
+        console.warn("[gemini-text] Failed to parse batch response JSON");
+        return result;
       }
     } else {
-      return [];
+      console.warn("[gemini-text] No JSON object found in batch response");
+      return result;
     }
   }
 
-  if (!Array.isArray(parsed)) return [];
-
-  const entries: TranslationEntry[] = [];
-  for (const item of parsed) {
-    if (typeof item !== "object" || item === null) continue;
-    const e = item as Record<string, unknown>;
-
-    const idx = Number(e.index);
-    if (isNaN(idx) || idx < 0 || idx >= blocks.length) continue;
-
-    const block = blocks[idx];
-    const translated = String(e.translated || "");
-    if (!translated) continue;
-
-    const typeRaw = String(e.type || "");
-    const shapeRaw = String(e.shape || "");
-
-    const type = (
-      ["bubble", "sfx", "narration"].includes(typeRaw) ? typeRaw : "bubble"
-    ) as TranslationEntry["type"];
-    const shape = (
-      ["ellipse", "rectangle", "cloud"].includes(shapeRaw)
-        ? shapeRaw
-        : "ellipse"
-    ) as TranslationEntry["shape"];
-
-    const { x, y, width, height } = block.position;
-    if (
-      x < 0 || x > 100 ||
-      y < 0 || y > 100 ||
-      width <= 0 ||
-      height <= 0
-    )
-      continue;
-
-    entries.push({
-      original: block.text,
-      translated,
-      position: block.position,
-      type,
-      shape,
-    });
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    console.warn("[gemini-text] Batch response is not an object");
+    return result;
   }
 
-  return entries;
+  const obj = parsed as Record<string, unknown>;
+
+  for (const [key, value] of Object.entries(obj)) {
+    const imgIdx = Number(key);
+    const blocks = imageBlocks.get(imgIdx);
+    if (!blocks) continue;
+
+    if (!Array.isArray(value)) continue;
+
+    const entries: TranslationEntry[] = [];
+    for (const item of value) {
+      if (typeof item !== "object" || item === null) continue;
+      const entry = validateEntry(item as Record<string, unknown>, blocks);
+      if (entry) entries.push(entry);
+    }
+
+    result.set(imgIdx, entries);
+  }
+
+  // Log warnings for missing images
+  for (const imgIdx of imageBlocks.keys()) {
+    if (!obj.hasOwnProperty(String(imgIdx))) {
+      console.warn(
+        `[gemini-text] Image ${imgIdx} missing from batch response`
+      );
+    }
+  }
+
+  return result;
 }
 
-export async function translateBlocks(
-  blocks: OcrBlock[],
+export async function translateBlocksBatch(
+  imageBlocks: Map<number, OcrBlock[]>,
   maxRetries = 2
-): Promise<TranslationEntry[]> {
-  if (blocks.length === 0) return [];
+): Promise<Map<number, TranslationEntry[]>> {
+  if (imageBlocks.size === 0) return new Map();
 
-  const prompt = buildPrompt(blocks);
+  const totalBlocks = [...imageBlocks.values()].reduce(
+    (sum, b) => sum + b.length,
+    0
+  );
+  const prompt = buildBatchPrompt(imageBlocks);
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       console.log(
-        `[gemini-text] Translating ${blocks.length} blocks (attempt ${attempt + 1}/${maxRetries + 1})`
+        `[gemini-text] Translating batch of ${imageBlocks.size} images (${totalBlocks} blocks) (attempt ${attempt + 1}/${maxRetries + 1})`
       );
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-lite",
+        model: MODEL,
         contents: [{ role: "user", parts: [{ text: prompt }] }],
       });
 
       const text = response.text ?? "";
       console.log(
-        `[gemini-text] Response received, length: ${text.length} chars`
+        `[gemini-text] Batch response received, length: ${text.length} chars`
       );
-      const entries = parseTextResponse(text, blocks);
-      console.log(`[gemini-text] Parsed ${entries.length} entries`);
-      return entries;
+      const results = parseBatchResponse(text, imageBlocks);
+
+      const totalEntries = [...results.values()].reduce(
+        (sum, e) => sum + e.length,
+        0
+      );
+      console.log(
+        `[gemini-text] Parsed ${totalEntries} entries across ${results.size} images`
+      );
+      return results;
     } catch (error: unknown) {
       const err = error as { status?: number; message?: string };
       console.error(
@@ -139,5 +198,5 @@ export async function translateBlocks(
     }
   }
 
-  return [];
+  return new Map();
 }

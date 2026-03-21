@@ -1,6 +1,7 @@
 import pLimit from "p-limit";
 import { ocrImage } from "./ocrClient.js";
-import { translateBlocks } from "./geminiTextClient.js";
+import type { OcrBlock } from "./ocrClient.js";
+import { translateBlocksBatch } from "./geminiTextClient.js";
 import {
   getTranslation,
   upsertTranslation,
@@ -10,7 +11,23 @@ import {
 import { scrapeChapterImages } from "../scraper/qtoonScraper.js";
 import type { TranslationProgress } from "./types.js";
 
-const CONCURRENCY = 3; // Azure CV F0: 20 calls/min — 3 parallel × ~4s/call ≈ safe
+const OCR_CONCURRENCY = 3; // Azure CV F0: 20 calls/min — 3 parallel × ~4s/call ≈ safe
+const GEMINI_BATCH_SIZE = 10;
+const MODEL_USED = "azure-cv+gemini-2.5-flash";
+
+interface OcrResult {
+  index: number;
+  url: string;
+  blocks: OcrBlock[];
+}
+
+function chunk<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+}
 
 export async function translateChapter(
   chapterId: number,
@@ -35,7 +52,6 @@ export async function translateChapter(
 
   const total = imageUrls.length;
   let completed = 0;
-  const limit = pLimit(CONCURRENCY);
 
   // Phase 1: check cache
   const uncached: { index: number; url: string }[] = [];
@@ -48,35 +64,41 @@ export async function translateChapter(
   }
 
   onProgress({ chapterId, total, completed, status: "translating" });
+  if (uncached.length === 0) {
+    onProgress({ chapterId, total, completed: total, status: "done" });
+    return;
+  }
 
-  // Phase 2: translate uncached images in parallel
+  // Phase 2a: OCR all uncached images in parallel
+  const limit = pLimit(OCR_CONCURRENCY);
+  const ocrResults: OcrResult[] = [];
   let hasError = false;
+
+  console.log(
+    `[translate] Phase 2a: OCR ${uncached.length} images (concurrency ${OCR_CONCURRENCY})`
+  );
 
   await Promise.all(
     uncached.map(({ index, url }) =>
       limit(async () => {
         if (hasError) return;
-
         try {
-          const ocrBlocks = await ocrImage(url);
-          const entries = await translateBlocks(ocrBlocks);
-
-          const originalTexts = entries.map((e) => e.original).join("\n");
-          const translatedTexts = entries.map((e) => e.translated).join("\n");
-
-          upsertTranslation({
-            chapterId,
-            imageIndex: index,
-            originalUrl: url,
-            originalText: originalTexts || undefined,
-            translatedText: translatedTexts || undefined,
-            targetLang: "pt-BR",
-            overlayData: JSON.stringify(entries),
-            modelUsed: "azure-cv+gemini-2.5-flash-lite",
-          });
-
-          completed++;
-          onProgress({ chapterId, total, completed, status: "translating" });
+          const blocks = await ocrImage(url);
+          if (blocks.length === 0) {
+            // No text found — save empty overlay immediately
+            upsertTranslation({
+              chapterId,
+              imageIndex: index,
+              originalUrl: url,
+              targetLang: "pt-BR",
+              overlayData: "[]",
+              modelUsed: MODEL_USED,
+            });
+            completed++;
+            onProgress({ chapterId, total, completed, status: "translating" });
+          } else {
+            ocrResults.push({ index, url, blocks });
+          }
         } catch (error) {
           hasError = true;
           onProgress({
@@ -85,12 +107,66 @@ export async function translateChapter(
             completed,
             status: "error",
             error:
-              error instanceof Error ? error.message : "Translation failed",
+              error instanceof Error ? error.message : "OCR failed",
           });
         }
       })
     )
   );
+
+  if (hasError) return;
+
+  // Phase 2b: Batch translate with Gemini
+  const batches = chunk(ocrResults, GEMINI_BATCH_SIZE);
+  console.log(
+    `[translate] Phase 2b: ${ocrResults.length} images with text → ${batches.length} Gemini batches`
+  );
+
+  for (const batch of batches) {
+    if (hasError) break;
+
+    try {
+      const imageBlocks = new Map<number, OcrBlock[]>();
+      const urlMap = new Map<number, string>();
+      for (const { index, url, blocks } of batch) {
+        imageBlocks.set(index, blocks);
+        urlMap.set(index, url);
+      }
+
+      const results = await translateBlocksBatch(imageBlocks);
+
+      // Save each image's results
+      for (const { index } of batch) {
+        const entries = results.get(index) ?? [];
+        const originalTexts = entries.map((e) => e.original).join("\n");
+        const translatedTexts = entries.map((e) => e.translated).join("\n");
+
+        upsertTranslation({
+          chapterId,
+          imageIndex: index,
+          originalUrl: urlMap.get(index)!,
+          originalText: originalTexts || undefined,
+          translatedText: translatedTexts || undefined,
+          targetLang: "pt-BR",
+          overlayData: JSON.stringify(entries),
+          modelUsed: MODEL_USED,
+        });
+      }
+
+      completed += batch.length;
+      onProgress({ chapterId, total, completed, status: "translating" });
+    } catch (error) {
+      hasError = true;
+      onProgress({
+        chapterId,
+        total,
+        completed,
+        status: "error",
+        error:
+          error instanceof Error ? error.message : "Translation failed",
+      });
+    }
+  }
 
   if (!hasError) {
     onProgress({ chapterId, total, completed: total, status: "done" });
