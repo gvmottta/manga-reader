@@ -1,5 +1,6 @@
 import pLimit from "p-limit";
-import { translateMangaPanel } from "./geminiClient.js";
+import { ocrImage } from "./ocrClient.js";
+import { translateBlocks } from "./geminiTextClient.js";
 import {
   getTranslation,
   upsertTranslation,
@@ -9,7 +10,7 @@ import {
 import { scrapeChapterImages } from "../scraper/qtoonScraper.js";
 import type { TranslationProgress } from "./types.js";
 
-const CONCURRENCY = 10;
+const CONCURRENCY = 3; // Azure CV F0: 20 calls/min — 3 parallel × ~4s/call ≈ safe
 
 export async function translateChapter(
   chapterId: number,
@@ -57,7 +58,8 @@ export async function translateChapter(
         if (hasError) return;
 
         try {
-          const entries = await translateMangaPanel(url);
+          const ocrBlocks = await ocrImage(url);
+          const entries = await translateBlocks(ocrBlocks);
 
           const originalTexts = entries.map((e) => e.original).join("\n");
           const translatedTexts = entries.map((e) => e.translated).join("\n");
@@ -70,7 +72,7 @@ export async function translateChapter(
             translatedText: translatedTexts || undefined,
             targetLang: "pt-BR",
             overlayData: JSON.stringify(entries),
-            modelUsed: "gemini-2.5-flash-lite",
+            modelUsed: "azure-cv+gemini-2.5-flash-lite",
           });
 
           completed++;
