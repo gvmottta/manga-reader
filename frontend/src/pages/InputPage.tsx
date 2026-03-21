@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { loadManga, listComics, type Comic } from "../api/client";
+import Navbar from "../components/Navbar";
+import { Search, Loader2, BookOpen } from "lucide-react";
 
 export default function InputPage() {
   const [url, setUrl] = useState("");
@@ -35,44 +37,33 @@ export default function InputPage() {
 
   return (
     <>
-      <header
-        className="border-b border-gray-800 px-6"
-        style={{
-          paddingTop: "calc(0.75rem + var(--safe-top))",
-          paddingBottom: "0.75rem",
-        }}
-      >
-        <Link
-          to="/"
-          className="text-xl font-bold text-purple-400 hover:text-purple-300"
-        >
-          Manga Translator
-        </Link>
-      </header>
+      <Navbar />
 
       <div className="flex min-h-[60vh] flex-col items-center justify-center py-6">
-        <h1 className="mb-2 text-4xl font-bold text-purple-400">
-          Manga Translator
-        </h1>
         <p className="mb-8 text-gray-400">
           Cole uma URL do QToon ou um ID para começar
         </p>
 
         <form onSubmit={handleSubmit} className="flex w-full max-w-xl gap-3">
-          <input
-            type="text"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="URL do QToon ou ID"
-            className="flex-1 rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-purple-500"
-            disabled={loading}
-          />
+          <label htmlFor="url-input" className="sr-only">URL do QToon</label>
+          <div className="relative flex-1">
+            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              id="url-input"
+              type="text"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="URL do QToon ou ID"
+              className="w-full rounded-lg border border-gray-700 bg-gray-900 py-3 pl-10 pr-4 text-gray-100 placeholder-gray-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+              disabled={loading}
+            />
+          </div>
           <button
             type="submit"
             disabled={loading || !url.trim()}
-            className="rounded-lg bg-purple-600 px-6 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-purple-600 px-6 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:opacity-50"
           >
-            {loading ? "Carregando..." : "Carregar"}
+            {loading ? <><Loader2 size={16} className="animate-spin" />Carregando</> : "Carregar"}
           </button>
         </form>
 
@@ -84,9 +75,12 @@ export default function InputPage() {
 
         {(comicsLoading || comics.length > 0) && (
           <div className="mt-12 w-full max-w-4xl">
-            <h2 className="mb-4 text-xl font-semibold text-gray-200">
-              Carregados anteriormente
-            </h2>
+            <div className="mb-4 flex items-center gap-3">
+              <h2 className="whitespace-nowrap text-xl font-semibold text-gray-200">
+                Carregados anteriormente
+              </h2>
+              <div className="h-px flex-1 bg-gray-800" />
+            </div>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
               {comicsLoading
                 ? Array.from({ length: 4 }).map((_, i) => (
@@ -105,17 +99,19 @@ export default function InputPage() {
                     <button
                       key={comic.id}
                       onClick={() => navigate(`/comic/${comic.id}`)}
-                      className="group flex flex-col overflow-hidden rounded-lg border border-gray-800 bg-gray-900 text-left transition hover:border-purple-500"
+                      className="group flex flex-col overflow-hidden rounded-lg border border-gray-800 bg-gray-900 text-left transition hover:-translate-y-1 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-900/30"
                     >
                       {comic.cover_url ? (
-                        <img
-                          src={`/api/proxy/image?url=${encodeURIComponent(comic.cover_url)}`}
-                          alt={comic.title}
-                          className="aspect-[3/4] w-full object-cover"
-                        />
+                        <div className="overflow-hidden">
+                          <img
+                            src={`/api/proxy/image?url=${encodeURIComponent(comic.cover_url)}`}
+                            alt={comic.title}
+                            className="aspect-[3/4] w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </div>
                       ) : (
-                        <div className="flex aspect-[3/4] w-full items-center justify-center bg-gray-800 text-gray-500">
-                          No cover
+                        <div className="flex aspect-[3/4] w-full items-center justify-center bg-gray-800">
+                          <BookOpen size={32} className="text-gray-600" />
                         </div>
                       )}
                       <div className="p-3">

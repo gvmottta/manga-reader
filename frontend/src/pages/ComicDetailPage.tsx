@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getChapters, type Comic, type Chapter } from "../api/client";
 import { useReadHistory } from "../hooks/useReadHistory";
+import Navbar from "../components/Navbar";
+import { Play, Check, Lock, ChevronRight, RefreshCw } from "lucide-react";
 
 export default function ComicDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -32,22 +34,7 @@ export default function ComicDetailPage() {
     load();
   }, [id]);
 
-  const header = (
-    <header
-      className="border-b border-gray-800 px-6"
-      style={{
-        paddingTop: "calc(0.75rem + var(--safe-top))",
-        paddingBottom: "0.75rem",
-      }}
-    >
-      <Link
-        to="/"
-        className="text-xl font-bold text-purple-400 hover:text-purple-300"
-      >
-        Manga Translator
-      </Link>
-    </header>
-  );
+  const header = <Navbar backTo={{ href: "/", label: "Início" }} />;
 
   if (loading) {
     return (
@@ -83,8 +70,9 @@ export default function ComicDetailPage() {
           <p className="text-red-400">{error}</p>
           <button
             onClick={load}
-            className="mt-4 rounded bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-500"
+            className="mt-4 flex items-center gap-2 rounded bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-500"
           >
+            <RefreshCw size={14} />
             Tentar novamente
           </button>
         </div>
@@ -123,27 +111,39 @@ export default function ComicDetailPage() {
           <div>
             <h1 className="text-3xl font-bold">{comic.title}</h1>
             {comic.author && (
-              <p className="mt-1 text-gray-400">by {comic.author}</p>
+              <p className="mt-1 text-sm text-gray-400">{comic.author}</p>
             )}
-            <p className="mt-2 text-sm text-gray-500">
-              {comic.total_chapters} chapters &middot;{" "}
-              {comic.serial_status?.toLowerCase() === "serializing"
-                ? "Ongoing"
-                : comic.serial_status}
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+              {comic.total_chapters != null && <span>{comic.total_chapters} capítulos</span>}
+              {comic.serial_status && (
+                <span
+                  className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
+                    comic.serial_status.toLowerCase() === "serializing"
+                      ? "border-green-800/50 bg-green-900/40 text-green-400"
+                      : "border-gray-700 bg-gray-800 text-gray-400"
+                  }`}
+                >
+                  {comic.serial_status.toLowerCase() === "serializing" ? "Em serialização" : comic.serial_status}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        <h2 className="mb-4 text-xl font-semibold">Chapters</h2>
+        <div className="mb-4 flex items-center gap-3">
+          <h2 className="whitespace-nowrap text-xl font-semibold">Capítulos</h2>
+          <div className="h-px flex-1 bg-gray-800" />
+        </div>
         {(() => {
           const lastId = getLastReadChapterId(comic.id);
           if (!lastId) return null;
           return (
             <Link
               to={`/comic/${comic.id}/read/${lastId}`}
-              className="mb-4 flex items-center gap-2 rounded-lg border border-purple-700 bg-purple-900/30 px-4 py-3 text-sm text-purple-300 transition hover:border-purple-500 hover:bg-purple-900/50"
+              className="mb-4 flex items-center gap-2 rounded-lg border border-purple-700 bg-purple-900/30 px-4 py-3 text-sm font-medium text-purple-300 transition hover:border-purple-500 hover:bg-purple-900/50"
             >
-              ▶ Continuar lendo
+              <Play size={14} fill="currentColor" />
+              Continuar lendo
             </Link>
           );
         })()}
@@ -155,14 +155,19 @@ export default function ComicDetailPage() {
               <Link
                 key={ch.id}
                 to={`/comic/${comic.id}/read/${ch.id}`}
-                className="flex items-center justify-between rounded-lg border border-gray-800 px-4 py-3 transition hover:border-purple-500 hover:bg-gray-900"
+                className="group flex items-center justify-between rounded-lg border border-gray-800 px-4 py-3 transition hover:border-purple-500 hover:bg-gray-900/60"
               >
                 <span className={read ? "text-gray-400" : undefined}>
-                  Ch. {ch.chapter_number} — {ch.title || "Untitled"}
+                  Ch. {ch.chapter_number} — {ch.title || "Sem título"}
                 </span>
-                {read && (
-                  <span className="text-xs text-green-500">✓ Lido</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {read && (
+                    <span className="flex items-center gap-1 text-xs text-green-500">
+                      <Check size={12} /> Lido
+                    </span>
+                  )}
+                  <ChevronRight size={14} className="text-gray-600 opacity-0 transition-opacity group-hover:opacity-100 group-hover:text-purple-400" />
+                </div>
               </Link>
             ) : (
               <div
@@ -170,9 +175,11 @@ export default function ComicDetailPage() {
                 className="flex cursor-not-allowed items-center justify-between rounded-lg border border-gray-800 px-4 py-3 opacity-50"
               >
                 <span>
-                  Ch. {ch.chapter_number} — {ch.title || "Untitled"}
+                  Ch. {ch.chapter_number} — {ch.title || "Sem título"}
                 </span>
-                <span className="text-xs text-yellow-400">LOCKED</span>
+                <span className="flex items-center gap-1 text-xs text-yellow-400">
+                  <Lock size={12} /> Pago
+                </span>
               </div>
             );
           })}

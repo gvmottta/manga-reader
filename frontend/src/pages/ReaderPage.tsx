@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight, ArrowUp } from "lucide-react";
 import {
   startTranslation,
   getTranslationStatus,
@@ -28,6 +29,8 @@ export default function ReaderPage() {
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [allChapters, setAllChapters] = useState<Chapter[]>([]);
   const { markAsRead } = useReadHistory();
+  const navigate = useNavigate();
+  const touchStartX = useRef<number>(0);
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const imageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const observerRef = useRef<IntersectionObserver>(undefined);
@@ -211,32 +214,50 @@ export default function ReaderPage() {
       {prevChapter && (
         <Link
           to={`/comic/${comicId}/read/${prevChapter.id}`}
-          className="rounded border border-gray-700 px-3 py-1 text-sm transition hover:border-purple-500"
+          className="flex items-center gap-1.5 rounded-full border border-gray-700 px-4 py-2 text-sm font-medium transition hover:border-purple-500 hover:text-purple-300"
         >
-          ← Cap. {prevChapter.chapter_number}
+          <ChevronLeft size={14} />
+          Cap. {prevChapter.chapter_number}
         </Link>
       )}
       {nextChapter && (
         <Link
           to={`/comic/${comicId}/read/${nextChapter.id}`}
-          className="rounded border border-gray-700 px-3 py-1 text-sm transition hover:border-purple-500"
+          className="flex items-center gap-1.5 rounded-full border border-gray-700 px-4 py-2 text-sm font-medium transition hover:border-purple-500 hover:text-purple-300"
         >
-          Cap. {nextChapter.chapter_number} →
+          Cap. {nextChapter.chapter_number}
+          <ChevronRight size={14} />
         </Link>
       )}
     </div>
   );
 
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(delta) < 50) return;
+    if (delta > 0 && prevChapter) navigate(`/comic/${comicId}/read/${prevChapter.id}`);
+    if (delta < 0 && nextChapter) navigate(`/comic/${comicId}/read/${nextChapter.id}`);
+  }
+
   return (
-    <div className="px-4 py-4">
+    <div
+      className="px-4 py-4"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Chapter info header */}
       {comic && (
-        <div className="mb-4 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3">
+        <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-gray-800 bg-gray-900/90 px-4 py-3 backdrop-blur-md">
           <Link
             to={`/comic/${comicId}`}
-            className="text-sm text-purple-400 hover:text-purple-300"
+            className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300"
           >
-            ← {comic.title}
+            <ChevronLeft size={14} />
+            {comic.title}
           </Link>
           {chapter && (
             <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -285,6 +306,15 @@ export default function ReaderPage() {
         </div>
       )}
 
+      {/* Image skeletons while loading */}
+      {images.length === 0 && progress !== null && (
+        <div className="mx-auto max-w-2xl space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="aspect-[3/4] w-full animate-pulse rounded-lg bg-gray-800" />
+          ))}
+        </div>
+      )}
+
       {/* Overlay */}
       {images.length > 0 && (
         <div className="mx-auto max-w-2xl">
@@ -311,9 +341,10 @@ export default function ReaderPage() {
           {navLinks}
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="rounded border border-gray-700 px-3 py-1 text-sm transition hover:border-purple-500"
+            className="flex items-center gap-1.5 rounded-full border border-gray-700 px-4 py-2 text-sm font-medium transition hover:border-purple-500 hover:text-purple-300"
           >
-            ↑ Topo
+            <ArrowUp size={14} />
+            Topo
           </button>
         </div>
       )}
@@ -321,7 +352,8 @@ export default function ReaderPage() {
       {/* Page counter (3.1) */}
       {images.length > 0 && (
         <div
-          className={`pointer-events-none fixed bottom-4 left-4 rounded-full bg-black/60 px-3 py-1 text-sm text-white transition-opacity duration-300 ${
+          style={{ bottom: "calc(1rem + var(--safe-bottom))" }}
+          className={`pointer-events-none fixed left-4 rounded-full bg-black/60 px-3 py-1 text-sm font-medium text-white transition-opacity duration-300 ${
             showCounter ? "opacity-100" : "opacity-0"
           }`}
         >

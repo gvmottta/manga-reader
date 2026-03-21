@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useLayoutEffect } from "react";
 import type { TranslationEntry } from "../api/client";
+import { Loader2 } from "lucide-react";
 
 interface ImageOverlayProps {
   proxyUrl: string;
@@ -39,11 +40,12 @@ function calcFontSizePx(
   containerWidth: number
 ): number {
   const area = width * height;
-  const base = Math.sqrt(area) * 0.45;
+  const areaBased = Math.sqrt(area) * 0.55;
+  const base = Math.min(areaBased, 20.0);
   const adjusted = base / Math.sqrt(Math.max(textLength / 8, 1));
-  const clamped = Math.max(1.2, Math.min(5.0, adjusted * 1.5));
+  const clamped = Math.max(1.5, Math.min(6.0, adjusted * 1.5));
   const px = (clamped / 100) * containerWidth;
-  return Math.max(11, px);
+  return Math.max(13, px);
 }
 
 interface BubbleProps {
@@ -58,6 +60,7 @@ function TranslationBubble({ entry, fontSize: initialFontSize, padding }: Bubble
 
   const shape = entry.shape || "ellipse";
   const isSfx = entry.type === "sfx";
+  const isNarration = entry.type === "narration";
   const shapeClass = getShapeClass(shape);
 
   useLayoutEffect(() => {
@@ -75,7 +78,13 @@ function TranslationBubble({ entry, fontSize: initialFontSize, padding }: Bubble
   return (
     <div
       ref={ref}
-      className={`absolute flex items-center justify-center bg-white text-center leading-tight overflow-hidden ${shapeClass} ${isSfx ? "text-yellow-400 italic" : "text-black"}`}
+      className={`absolute flex items-center justify-center text-center leading-tight overflow-hidden ${shapeClass} ${
+        isSfx
+          ? "bg-transparent text-yellow-400 italic"
+          : isNarration
+          ? "bg-[#f5f0dc] border-l-2 border-gray-400 text-black"
+          : "bg-white text-black"
+      }`}
       style={{
         left: `${entry.position.x}%`,
         top: `${entry.position.y}%`,
@@ -86,6 +95,8 @@ function TranslationBubble({ entry, fontSize: initialFontSize, padding }: Bubble
         boxSizing: "border-box",
         fontFamily: "'Bangers', cursive",
         letterSpacing: "0.04em",
+        boxShadow: isSfx ? "none" : "0 2px 8px rgba(0,0,0,0.45)",
+        filter: isSfx ? "drop-shadow(0 1px 2px rgba(0,0,0,0.8))" : undefined,
       }}
     >
       {entry.translated}
@@ -97,6 +108,7 @@ export default function ImageOverlay({ proxyUrl, entries, index, translating }: 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [showTranslations, setShowTranslations] = useState(true);
+  const [showHint, setShowHint] = useState(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -107,6 +119,13 @@ export default function ImageOverlay({ proxyUrl, entries, index, translating }: 
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (entries.length === 0) return;
+    setShowHint(true);
+    const t = setTimeout(() => setShowHint(false), 3000);
+    return () => clearTimeout(t);
+  }, [entries.length]);
 
   return (
     <div
@@ -121,10 +140,17 @@ export default function ImageOverlay({ proxyUrl, entries, index, translating }: 
         className="block w-full"
         loading="lazy"
       />
-      {/* Translating badge (2.2) */}
+      {/* Translating badge */}
       {entries.length === 0 && translating && (
-        <div className="pointer-events-none absolute bottom-2 right-2 animate-pulse rounded-full bg-black/70 px-2 py-1 text-xs text-white">
-          ⏳ Traduzindo
+        <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-xs text-white">
+          <Loader2 size={10} className="animate-spin" />
+          Traduzindo
+        </div>
+      )}
+      {/* Toggle hint */}
+      {showHint && entries.length > 0 && (
+        <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-white opacity-80 transition-opacity duration-500">
+          Toque para ocultar traduções
         </div>
       )}
       {/* Translations with tap-to-toggle (3.2) */}
