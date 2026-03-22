@@ -260,41 +260,54 @@ export default function ReaderPage() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Chapter info header */}
+      {/* Chapter info header — Dynamic Island integrated */}
       {comic && (
-        <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-gray-800 bg-gray-900/90 px-4 py-3 backdrop-blur-md">
-          <Link
-            to={`/comic/${comicId}`}
-            className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300"
-          >
-            <ChevronLeft size={14} />
-            {comic.title}
-          </Link>
-          {chapter && (
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="text-xl font-bold">
-                Capítulo {chapter.chapter_number}
-              </span>
-              {chapter.title && (
-                <span className="text-gray-300">{chapter.title}</span>
+        <div className="sticky top-0 z-10 -mx-4 mb-4">
+          {/* Safe-area bridge */}
+          <div
+            className="bg-gray-950/80 backdrop-blur-xl"
+            style={{ height: "var(--safe-top)" }}
+          />
+          <div className="relative border-b border-white/[0.06] bg-gray-950/70 px-4 py-3 backdrop-blur-xl">
+            {/* Top highlight */}
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
+
+            <Link
+              to={`/comic/${comicId}`}
+              className="group inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-sm text-purple-400 transition hover:border-purple-500/40 hover:bg-purple-500/10 hover:text-purple-300"
+            >
+              <ChevronLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
+              {comic.title}
+            </Link>
+            {chapter && (
+              <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="text-xl font-bold">
+                  Capítulo {chapter.chapter_number}
+                </span>
+                {chapter.title && (
+                  <span className="text-gray-300">{chapter.title}</span>
+                )}
+              </div>
+            )}
+            <div className="mt-1 flex flex-wrap gap-x-4 text-xs text-gray-500">
+              {comic.author && <span>Autor: {comic.author}</span>}
+              {comic.total_chapters && (
+                <span>{comic.total_chapters} capítulos no total</span>
+              )}
+              {comic.serial_status && (
+                <span>
+                  {comic.serial_status.toLowerCase() === "serializing"
+                    ? "Em serialização"
+                    : comic.serial_status}
+                </span>
+              )}
+              {chapter?.is_free === 1 && (
+                <span className="text-green-400">Gratuito</span>
               )}
             </div>
-          )}
-          <div className="mt-1 flex flex-wrap gap-x-4 text-xs text-gray-500">
-            {comic.author && <span>Autor: {comic.author}</span>}
-            {comic.total_chapters && (
-              <span>{comic.total_chapters} capítulos no total</span>
-            )}
-            {comic.serial_status && (
-              <span>
-                {comic.serial_status.toLowerCase() === "serializing"
-                  ? "Em serialização"
-                  : comic.serial_status}
-              </span>
-            )}
-            {chapter?.is_free === 1 && (
-              <span className="text-green-400">Gratuito</span>
-            )}
+
+            {/* Bottom fade */}
+            <div className="absolute inset-x-0 -bottom-4 h-4 bg-gradient-to-b from-gray-950/40 to-transparent pointer-events-none" />
           </div>
         </div>
       )}

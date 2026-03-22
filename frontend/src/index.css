@@ -7,4 +7,12 @@
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure backdrop-filter works on older Safari */
+@supports (-webkit-backdrop-filter: blur(1px)) {
+  .backdrop-blur-xl {
+    -webkit-backdrop-filter: blur(24px);
+  }
 }

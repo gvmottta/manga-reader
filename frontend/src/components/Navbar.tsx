@@ -7,30 +7,49 @@ interface NavbarProps {
 
 export default function Navbar({ backTo }: NavbarProps) {
   return (
-    <header
-      className="border-b border-gray-800 px-4"
-      style={{
-        paddingTop: "calc(0.75rem + var(--safe-top))",
-        paddingBottom: "0.75rem",
-      }}
-    >
-      <div className="flex items-center gap-3">
-        {backTo ? (
-          <Link
-            to={backTo.href}
-            className="flex items-center gap-1 text-sm text-gray-400 transition hover:text-purple-300"
-          >
-            <ChevronLeft size={16} />
-            {backTo.label}
-          </Link>
-        ) : (
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-purple-600 text-xs font-bold text-white select-none">
-              MT
-            </div>
-            <span className="text-lg font-bold text-purple-400">Manga Translator</span>
-          </Link>
-        )}
+    <header className="sticky top-0 z-50">
+      {/* Safe-area bridge — fills the notch/Dynamic Island zone with a matching bg */}
+      <div
+        className="bg-gray-950/80 backdrop-blur-xl"
+        style={{ height: "var(--safe-top)" }}
+      />
+
+      {/* Island connector — subtle pill accent that visually ties into the Dynamic Island */}
+      <div className="relative flex justify-center bg-gray-950/80 backdrop-blur-xl">
+        <div className="absolute -top-1 h-2 w-28 rounded-full bg-purple-500/20 blur-md" />
+      </div>
+
+      {/* Main navbar content */}
+      <div className="relative border-b border-white/[0.06] bg-gray-950/70 backdrop-blur-xl">
+        {/* Top edge highlight */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
+
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-3">
+            {backTo ? (
+              <Link
+                to={backTo.href}
+                className="group flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-sm text-gray-400 transition hover:border-purple-500/40 hover:bg-purple-500/10 hover:text-purple-300"
+              >
+                <ChevronLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
+                {backTo.label}
+              </Link>
+            ) : (
+              <Link to="/" className="group flex items-center gap-2.5">
+                <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 text-xs font-bold text-white shadow-lg shadow-purple-500/25 transition-shadow group-hover:shadow-purple-500/40 select-none">
+                  MT
+                  <div className="absolute inset-0 rounded-lg bg-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
+                </div>
+                <span className="bg-gradient-to-r from-purple-300 to-purple-500 bg-clip-text text-lg font-bold text-transparent">
+                  Manga Translator
+                </span>
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom fade — softens the border into the content below */}
+        <div className="absolute inset-x-0 -bottom-4 h-4 bg-gradient-to-b from-gray-950/40 to-transparent pointer-events-none" />
       </div>
     </header>
   );
