@@ -166,13 +166,13 @@ export default function ImageOverlay({ proxyUrl, entries, index, translating }: 
       {entries.length === 0 && translating && (
         <div className="pointer-events-none absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-xs text-white">
           <Loader2 size={10} className="animate-spin" />
-          Traduzindo
+          Traduzindo...
         </div>
       )}
       {/* Toggle hint */}
       {showHint && entries.length > 0 && (
         <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-white opacity-80 transition-opacity duration-500">
-          Toque para ocultar traduções
+          Toque pra esconder as traduções
         </div>
       )}
       {/* Translations with tap-to-toggle (3.2) */}

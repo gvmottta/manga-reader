@@ -41,7 +41,7 @@ export default function InputPage() {
 
       <div className="flex min-h-[60vh] flex-col items-center justify-center py-6">
         <p className="mb-8 text-gray-400">
-          Cole uma URL do QToon ou um ID para começar
+          Cola o link do mangá aqui, meu bem~
         </p>
 
         <form onSubmit={handleSubmit} className="flex w-full max-w-xl gap-3">
@@ -53,7 +53,7 @@ export default function InputPage() {
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="URL do QToon ou ID"
+              placeholder="Link ou ID do mangá"
               className="w-full rounded-lg border border-gray-700 bg-gray-900 py-3 pl-10 pr-4 text-gray-100 placeholder-gray-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
               disabled={loading}
             />
@@ -63,12 +63,12 @@ export default function InputPage() {
             disabled={loading || !url.trim()}
             className="flex items-center gap-2 rounded-lg bg-purple-600 px-6 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:opacity-50"
           >
-            {loading ? <><Loader2 size={16} className="animate-spin" />Carregando</> : "Carregar"}
+            {loading ? <><Loader2 size={16} className="animate-spin" />Buscando...</> : "Buscar"}
           </button>
         </form>
 
         <p className="mt-2 text-sm text-gray-500">
-          Ex.: https://qtoon.com/detail/c_12345 ou 12345
+          Ex.: cole o link do QToon ou só o número
         </p>
 
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
@@ -77,7 +77,7 @@ export default function InputPage() {
           <div className="mt-12 w-full max-w-4xl">
             <div className="mb-4 flex items-center gap-3">
               <h2 className="whitespace-nowrap text-xl font-semibold text-gray-200">
-                Carregados anteriormente
+                Seus mangás
               </h2>
               <div className="h-px flex-1 bg-gray-800" />
             </div>
@@ -125,7 +125,7 @@ export default function InputPage() {
                         )}
                         {comic.total_chapters != null && (
                           <p className="mt-1 text-xs text-gray-500">
-                            {comic.total_chapters} chapters
+                            {comic.total_chapters} capítulos
                           </p>
                         )}
                       </div>

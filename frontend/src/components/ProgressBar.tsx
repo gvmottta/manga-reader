@@ -18,11 +18,11 @@ export default function ProgressBar({ completed, total, status, error, onRetry, 
       <div className="mb-1 flex justify-between text-sm text-gray-400">
         <span className="flex items-center gap-1.5">
           {status === "error" ? (
-            <><XCircle size={14} className="text-red-400" /> Erro</>
+            <><XCircle size={14} className="text-red-400" /> Deu ruim</>
           ) : status === "done" ? (
-            <><CheckCircle2 size={14} className="text-green-400" /> Tradução concluída</>
+            <><CheckCircle2 size={14} className="text-green-400" /> Prontinho!</>
           ) : (
-            <><Loader2 size={14} className="animate-spin text-purple-400" /> Traduzindo...</>
+            <><Loader2 size={14} className="animate-spin text-purple-400" /> Traduzindo pra você...</>
           )}
         </span>
         <div className="flex items-center gap-2">
@@ -30,7 +30,7 @@ export default function ProgressBar({ completed, total, status, error, onRetry, 
           {onRetry && (
             <button
               onClick={onRetry}
-              title="Refazer tradução"
+              title="Traduzir de novo"
               className="rounded p-1 opacity-40 transition hover:bg-gray-800 hover:opacity-100"
             >
               <RefreshCw size={13} />
@@ -68,7 +68,7 @@ export default function ProgressBar({ completed, total, status, error, onRetry, 
               onClick={onRetry}
               className="flex items-center gap-1 text-sm text-red-400 hover:text-red-300"
             >
-              <RefreshCw size={12} /> Tentar novamente
+              <RefreshCw size={12} /> Tentar de novo
             </button>
           )}
         </div>

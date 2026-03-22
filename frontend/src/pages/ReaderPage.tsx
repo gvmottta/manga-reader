@@ -201,7 +201,7 @@ export default function ReaderPage() {
           onClick={() => window.location.reload()}
           className="mt-4 rounded bg-purple-600 px-4 py-2 text-white"
         >
-          Retry
+          Tentar de novo
         </button>
       </div>
     );
@@ -290,7 +290,7 @@ export default function ReaderPage() {
               </div>
             )}
             <div className="mt-1 flex flex-wrap gap-x-4 text-xs text-gray-500">
-              {comic.author && <span>Autor: {comic.author}</span>}
+              {comic.author && <span>Feito por: {comic.author}</span>}
               {comic.total_chapters && (
                 <span>{comic.total_chapters} capítulos no total</span>
               )}
@@ -302,7 +302,7 @@ export default function ReaderPage() {
                 </span>
               )}
               {chapter?.is_free === 1 && (
-                <span className="text-green-400">Gratuito</span>
+                <span className="text-green-400">Grátis</span>
               )}
             </div>
 
@@ -369,7 +369,7 @@ export default function ReaderPage() {
             className="flex items-center gap-1.5 rounded-full border border-gray-700 px-4 py-2 text-sm font-medium transition hover:border-purple-500 hover:text-purple-300"
           >
             <ArrowUp size={14} />
-            Topo
+            Voltar pro topo
           </button>
         </div>
       )}

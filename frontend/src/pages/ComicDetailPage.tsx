@@ -34,7 +34,7 @@ export default function ComicDetailPage() {
     load();
   }, [id]);
 
-  const header = <Navbar backTo={{ href: "/", label: "Início" }} />;
+  const header = <Navbar backTo={{ href: "/", label: "Voltar" }} />;
 
   if (loading) {
     return (
@@ -73,7 +73,7 @@ export default function ComicDetailPage() {
             className="mt-4 flex items-center gap-2 rounded bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-500"
           >
             <RefreshCw size={14} />
-            Tentar novamente
+            Tentar de novo
           </button>
         </div>
       </>
@@ -85,7 +85,7 @@ export default function ComicDetailPage() {
       <>
         {header}
         <div className="mx-auto max-w-7xl px-4 py-6">
-          <p className="text-gray-400">Quadrinho não encontrado</p>
+          <p className="text-gray-400">Ops, não achei esse mangá</p>
         </div>
       </>
     );
@@ -131,7 +131,7 @@ export default function ComicDetailPage() {
         </div>
 
         <div className="mb-4 flex items-center gap-3">
-          <h2 className="whitespace-nowrap text-xl font-semibold">Capítulos</h2>
+          <h2 className="whitespace-nowrap text-xl font-semibold">Capítulos disponíveis</h2>
           <div className="h-px flex-1 bg-gray-800" />
         </div>
         {(() => {
@@ -143,7 +143,7 @@ export default function ComicDetailPage() {
               className="mb-4 flex items-center gap-2 rounded-lg border border-purple-700 bg-purple-900/30 px-4 py-3 text-sm font-medium text-purple-300 transition hover:border-purple-500 hover:bg-purple-900/50"
             >
               <Play size={14} fill="currentColor" />
-              Continuar lendo
+              Continuar de onde parou
             </Link>
           );
         })()}
@@ -173,7 +173,7 @@ export default function ComicDetailPage() {
                   )}
                   {read && (
                     <span className="flex items-center gap-1 text-xs text-green-500">
-                      <Check size={12} /> Lido
+                      <Check size={12} /> Já leu
                     </span>
                   )}
                   <ChevronRight size={14} className="text-gray-600 opacity-0 transition-opacity group-hover:opacity-100 group-hover:text-purple-400" />
@@ -188,7 +188,7 @@ export default function ComicDetailPage() {
                   Ch. {ch.chapter_number} — {ch.title || "Sem título"}
                 </span>
                 <span className="flex items-center gap-1 text-xs text-yellow-400">
-                  <Lock size={12} /> Pago
+                  <Lock size={12} /> Bloqueado
                 </span>
               </div>
             );
