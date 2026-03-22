@@ -12,6 +12,7 @@ import {
   getComicById,
   getAllComics,
   getTranslationsByChapter,
+  getTranslationCountsByComic,
   updateChapterImages,
   deleteTranslationsByChapter,
 } from "../db/repositories.js";
@@ -94,7 +95,20 @@ mangaRouter.get("/:comicId/chapters", (req, res, next) => {
     }
 
     const chapters = getChaptersByComic(comicId);
-    res.json({ comic, chapters });
+    const translationCounts = getTranslationCountsByComic(comicId);
+    const countMap = new Map(translationCounts.map(r => [r.chapter_id, r.translated_count]));
+
+    const enrichedChapters = chapters.map(ch => {
+      const totalImages = ch.image_urls ? (JSON.parse(ch.image_urls) as string[]).length : 0;
+      const translatedCount = countMap.get(ch.id) ?? 0;
+      const translation_status =
+        totalImages > 0 && translatedCount >= totalImages ? "complete" as const
+        : translatedCount > 0 ? "partial" as const
+        : "none" as const;
+      return { ...ch, translation_status };
+    });
+
+    res.json({ comic, chapters: enrichedChapters });
   } catch (err) {
     next(err);
   }

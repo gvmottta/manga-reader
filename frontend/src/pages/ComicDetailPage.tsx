@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { getChapters, type Comic, type Chapter } from "../api/client";
 import { useReadHistory } from "../hooks/useReadHistory";
 import Navbar from "../components/Navbar";
-import { Play, Check, Lock, ChevronRight, RefreshCw } from "lucide-react";
+import { Play, Check, Lock, ChevronRight, RefreshCw, Languages } from "lucide-react";
 
 export default function ComicDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -161,6 +161,16 @@ export default function ComicDetailPage() {
                   Ch. {ch.chapter_number} — {ch.title || "Sem título"}
                 </span>
                 <div className="flex items-center gap-2">
+                  {ch.translation_status === "complete" && (
+                    <span className="flex items-center gap-1 text-xs text-blue-400">
+                      <Languages size={12} /> Traduzido
+                    </span>
+                  )}
+                  {ch.translation_status === "partial" && (
+                    <span className="flex items-center gap-1 text-xs text-yellow-400">
+                      <Languages size={12} /> Parcial
+                    </span>
+                  )}
                   {read && (
                     <span className="flex items-center gap-1 text-xs text-green-500">
                       <Check size={12} /> Lido

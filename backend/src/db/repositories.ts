@@ -129,6 +129,17 @@ export function getChaptersByComic(comicId: number): ChapterRow[] {
   return getChaptersByComicStmt.all(comicId) as ChapterRow[];
 }
 
+const getTranslationCountsByComicStmt = db.prepare(`
+  SELECT c.id AS chapter_id, COUNT(t.id) AS translated_count
+  FROM chapters c
+  LEFT JOIN translations t ON t.chapter_id = c.id
+  WHERE c.comic_id = ?
+  GROUP BY c.id
+`);
+export function getTranslationCountsByComic(comicId: number): { chapter_id: number; translated_count: number }[] {
+  return getTranslationCountsByComicStmt.all(comicId) as { chapter_id: number; translated_count: number }[];
+}
+
 const getChapterByIdStmt = db.prepare("SELECT * FROM chapters WHERE id = ?");
 export function getChapterById(id: number): ChapterRow | undefined {
   return getChapterByIdStmt.get(id) as ChapterRow | undefined;

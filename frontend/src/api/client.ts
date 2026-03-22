@@ -17,6 +17,7 @@ export interface Chapter {
   chapter_number: number | null;
   is_free: number;
   image_urls: string | null;
+  translation_status?: "none" | "partial" | "complete";
 }
 
 export interface TierStats {
