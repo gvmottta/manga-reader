@@ -9,13 +9,13 @@ import {
   updateChapterImages,
 } from "../db/repositories.js";
 import { scrapeChapterImages } from "../scraper/qtoonScraper.js";
-import type { TranslationProgress } from "./types.js";
+import type { TranslationProgress, TierStats } from "./types.js";
 
 const OCR_CONCURRENCY = 5;
 const GEMINI_BATCH_SIZE = 10;
 const MODEL_USED = "azure-cv+gemini-2.5-flash";
 
-interface OcrResult {
+interface OcrImageData {
   index: number;
   url: string;
   blocks: OcrBlock[];
@@ -63,15 +63,17 @@ export async function translateChapter(
     }
   }
 
-  onProgress({ chapterId, total, completed, status: "translating" });
+  const tierStats: TierStats = { ocrFree: 0, ocrPaid: 0, geminiFree: 0, geminiPaid: 0 };
+
+  onProgress({ chapterId, total, completed, status: "translating", tierStats });
   if (uncached.length === 0) {
-    onProgress({ chapterId, total, completed: total, status: "done" });
+    onProgress({ chapterId, total, completed: total, status: "done", tierStats });
     return;
   }
 
   // Phase 2a: OCR all uncached images in parallel
   const limit = pLimit(OCR_CONCURRENCY);
-  const ocrResults: OcrResult[] = [];
+  const ocrResults: OcrImageData[] = [];
   let hasError = false;
 
   console.log(
@@ -83,7 +85,10 @@ export async function translateChapter(
       limit(async () => {
         if (hasError) return;
         try {
-          const blocks = await ocrImage(url);
+          const { blocks, tier } = await ocrImage(url);
+          if (tier === "free") tierStats.ocrFree++;
+          else tierStats.ocrPaid++;
+
           if (blocks.length === 0) {
             // No text found — save empty overlay immediately
             upsertTranslation({
@@ -95,7 +100,7 @@ export async function translateChapter(
               modelUsed: MODEL_USED,
             });
             completed++;
-            onProgress({ chapterId, total, completed, status: "translating" });
+            onProgress({ chapterId, total, completed, status: "translating", tierStats });
           } else {
             ocrResults.push({ index, url, blocks });
           }
@@ -108,6 +113,7 @@ export async function translateChapter(
             status: "error",
             error:
               error instanceof Error ? error.message : "OCR failed",
+            tierStats,
           });
         }
       })
@@ -133,7 +139,9 @@ export async function translateChapter(
         urlMap.set(index, url);
       }
 
-      const results = await translateBlocksBatch(imageBlocks);
+      const { translations: results, tier } = await translateBlocksBatch(imageBlocks);
+      if (tier === "free") tierStats.geminiFree++;
+      else tierStats.geminiPaid++;
 
       // Save each image's results
       for (const { index } of batch) {
@@ -154,7 +162,7 @@ export async function translateChapter(
       }
 
       completed += batch.length;
-      onProgress({ chapterId, total, completed, status: "translating" });
+      onProgress({ chapterId, total, completed, status: "translating", tierStats });
     } catch (error) {
       hasError = true;
       onProgress({
@@ -164,11 +172,12 @@ export async function translateChapter(
         status: "error",
         error:
           error instanceof Error ? error.message : "Translation failed",
+        tierStats,
       });
     }
   }
 
   if (!hasError) {
-    onProgress({ chapterId, total, completed: total, status: "done" });
+    onProgress({ chapterId, total, completed: total, status: "done", tierStats });
   }
 }

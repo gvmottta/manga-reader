@@ -3,7 +3,19 @@ import { config } from "../config.js";
 import type { TranslationEntry } from "./types.js";
 import type { OcrBlock } from "./ocrClient.js";
 
-const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
+let aiFree: GoogleGenAI | null = null;
+let aiPaid: GoogleGenAI | null = null;
+
+function getAiFree(): GoogleGenAI | null {
+  if (!config.hasFreeTierGemini) return null;
+  if (!aiFree) aiFree = new GoogleGenAI({ apiKey: config.geminiApiKeyFree });
+  return aiFree;
+}
+
+function getAiPaid(): GoogleGenAI {
+  if (!aiPaid) aiPaid = new GoogleGenAI({ apiKey: config.geminiApiKey });
+  return aiPaid;
+}
 
 const MODEL = "gemini-2.5-flash";
 
@@ -148,11 +160,27 @@ function parseBatchResponse(
   return result;
 }
 
+export interface GeminiTranslateResult {
+  translations: Map<number, TranslationEntry[]>;
+  tier: "free" | "paid";
+}
+
+async function callGemini(
+  ai: GoogleGenAI,
+  prompt: string,
+): Promise<string> {
+  const response = await ai.models.generateContent({
+    model: MODEL,
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+  });
+  return response.text ?? "";
+}
+
 export async function translateBlocksBatch(
   imageBlocks: Map<number, OcrBlock[]>,
   maxRetries = 2
-): Promise<Map<number, TranslationEntry[]>> {
-  if (imageBlocks.size === 0) return new Map();
+): Promise<GeminiTranslateResult> {
+  if (imageBlocks.size === 0) return { translations: new Map(), tier: "paid" };
 
   const totalBlocks = [...imageBlocks.values()].reduce(
     (sum, b) => sum + b.length,
@@ -160,34 +188,64 @@ export async function translateBlocksBatch(
   );
   const prompt = buildBatchPrompt(imageBlocks);
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+  // Try free tier first (single attempt, no retries)
+  const freeTier = getAiFree();
+  if (freeTier) {
     try {
       console.log(
-        `[gemini-text] Translating batch of ${imageBlocks.size} images (${totalBlocks} blocks) (attempt ${attempt + 1}/${maxRetries + 1})`
+        `[gemini-text] Trying free tier: batch of ${imageBlocks.size} images (${totalBlocks} blocks)`
       );
-      const response = await ai.models.generateContent({
-        model: MODEL,
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-      });
-
-      const text = response.text ?? "";
+      const text = await callGemini(freeTier, prompt);
       console.log(
-        `[gemini-text] Batch response received, length: ${text.length} chars`
+        `[gemini-text] Free tier response received, length: ${text.length} chars`
       );
       const results = parseBatchResponse(text, imageBlocks);
-
       const totalEntries = [...results.values()].reduce(
         (sum, e) => sum + e.length,
         0
       );
       console.log(
-        `[gemini-text] Parsed ${totalEntries} entries across ${results.size} images`
+        `[gemini-text] Parsed ${totalEntries} entries across ${results.size} images (tier: free)`
       );
-      return results;
+      return { translations: results, tier: "free" };
+    } catch (error: unknown) {
+      const err = error as { status?: number; message?: string };
+      if (err.status === 429 || err.status === 403) {
+        console.log(
+          `[gemini-text] Free tier returned ${err.status}, falling back to paid tier`
+        );
+      } else {
+        console.warn(
+          `[gemini-text] Free tier error (${err.status}): ${err.message}, falling back to paid tier`
+        );
+      }
+    }
+  }
+
+  // Paid tier with retries
+  const paidAi = getAiPaid();
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(
+        `[gemini-text] Translating batch of ${imageBlocks.size} images (${totalBlocks} blocks) via paid tier (attempt ${attempt + 1}/${maxRetries + 1})`
+      );
+      const text = await callGemini(paidAi, prompt);
+      console.log(
+        `[gemini-text] Paid tier response received, length: ${text.length} chars`
+      );
+      const results = parseBatchResponse(text, imageBlocks);
+      const totalEntries = [...results.values()].reduce(
+        (sum, e) => sum + e.length,
+        0
+      );
+      console.log(
+        `[gemini-text] Parsed ${totalEntries} entries across ${results.size} images (tier: paid)`
+      );
+      return { translations: results, tier: "paid" };
     } catch (error: unknown) {
       const err = error as { status?: number; message?: string };
       console.error(
-        `[gemini-text] Error on attempt ${attempt + 1}: ${err.message} (status: ${err.status})`
+        `[gemini-text] Paid tier error on attempt ${attempt + 1}: ${err.message} (status: ${err.status})`
       );
       if (err.status === 429) {
         await new Promise((r) => setTimeout(r, 5000 * Math.pow(2, attempt)));
@@ -198,5 +256,5 @@ export async function translateBlocksBatch(
     }
   }
 
-  return new Map();
+  return { translations: new Map(), tier: "paid" };
 }

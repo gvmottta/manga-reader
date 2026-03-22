@@ -7,6 +7,16 @@ export const config = {
   geminiApiKey: process.env.GEMINI_API_KEY || "",
   azureVisionKey: process.env.AZURE_VISION_KEY || "",
   azureVisionEndpoint: process.env.AZURE_VISION_ENDPOINT || "",
+  // Free tier (optional — tried first, falls back to paid on 429/403)
+  geminiApiKeyFree: process.env.GEMINI_API_KEY_FREE || "",
+  azureVisionKeyFree: process.env.AZURE_VISION_KEY_FREE || "",
+  azureVisionEndpointFree: process.env.AZURE_VISION_ENDPOINT_FREE || "",
+  get hasFreeTierGemini() {
+    return !!this.geminiApiKeyFree;
+  },
+  get hasFreeTierAzure() {
+    return !!this.azureVisionKeyFree && !!this.azureVisionEndpointFree;
+  },
 };
 
 export function validateConfig(): void {

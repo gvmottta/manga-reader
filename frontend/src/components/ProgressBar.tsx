@@ -1,4 +1,5 @@
 import { CheckCircle2, XCircle, Loader2, RefreshCw } from "lucide-react";
+import type { TierStats } from "../api/client";
 
 interface ProgressBarProps {
   completed: number;
@@ -6,9 +7,10 @@ interface ProgressBarProps {
   status: string;
   error?: string;
   onRetry?: () => void;
+  tierStats?: TierStats;
 }
 
-export default function ProgressBar({ completed, total, status, error, onRetry }: ProgressBarProps) {
+export default function ProgressBar({ completed, total, status, error, onRetry, tierStats }: ProgressBarProps) {
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
@@ -44,6 +46,20 @@ export default function ProgressBar({ completed, total, status, error, onRetry }
           style={{ width: `${pct}%` }}
         />
       </div>
+      {import.meta.env.DEV && tierStats && (tierStats.ocrFree + tierStats.ocrPaid + tierStats.geminiFree + tierStats.geminiPaid > 0) && (
+        <div className="mt-1 flex gap-3 text-xs text-gray-500">
+          {(tierStats.ocrFree > 0 || tierStats.geminiFree > 0) && (
+            <span className="text-green-500">
+              Gratis: {tierStats.ocrFree > 0 ? `${tierStats.ocrFree} OCR` : ""}{tierStats.ocrFree > 0 && tierStats.geminiFree > 0 ? " + " : ""}{tierStats.geminiFree > 0 ? `${tierStats.geminiFree} trad` : ""}
+            </span>
+          )}
+          {(tierStats.ocrPaid > 0 || tierStats.geminiPaid > 0) && (
+            <span className="text-yellow-500">
+              Pago: {tierStats.ocrPaid > 0 ? `${tierStats.ocrPaid} OCR` : ""}{tierStats.ocrPaid > 0 && tierStats.geminiPaid > 0 ? " + " : ""}{tierStats.geminiPaid > 0 ? `${tierStats.geminiPaid} trad` : ""}
+            </span>
+          )}
+        </div>
+      )}
       {error && (
         <div className="mt-1 flex items-center gap-2">
           <p className="text-sm text-red-400">{error}</p>

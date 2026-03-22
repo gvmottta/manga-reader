@@ -231,7 +231,47 @@ function resolveOverlaps(blocks: OcrBlock[]): OcrBlock[] {
   }));
 }
 
-export async function ocrImage(imageUrl: string): Promise<OcrBlock[]> {
+export interface OcrImageResult {
+  blocks: OcrBlock[];
+  tier: "free" | "paid";
+}
+
+async function callAzureCVOnce(
+  resized: Buffer,
+  key: string,
+  endpoint: string,
+): Promise<Response> {
+  const base = endpoint.replace(/\/$/, "");
+  const url = `${base}/computervision/imageanalysis:analyze?api-version=2024-02-01&features=read`;
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "Ocp-Apim-Subscription-Key": key,
+      "Content-Type": "application/octet-stream",
+    },
+    body: new Uint8Array(resized),
+  });
+}
+
+async function callAzureCVWithRetry(
+  resized: Buffer,
+  key: string,
+  endpoint: string,
+): Promise<Response> {
+  let response: Response | undefined;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    response = await callAzureCVOnce(resized, key, endpoint);
+    if (response.status === 429) {
+      const wait = parseInt(response.headers.get("Retry-After") ?? "1", 10) * 1000;
+      await new Promise((r) => setTimeout(r, wait));
+      continue;
+    }
+    break;
+  }
+  return response!;
+}
+
+export async function ocrImage(imageUrl: string): Promise<OcrImageResult> {
   console.log(`[ocr] Fetching image: ${imageUrl}`);
   const imageResponse = await fetch(imageUrl, {
     headers: {
@@ -253,34 +293,32 @@ export async function ocrImage(imageUrl: string): Promise<OcrBlock[]> {
     .toBuffer({ resolveWithObject: true });
   console.log(`[ocr] Image resized to ${info.width}x${info.height}px`);
 
-  const endpoint = config.azureVisionEndpoint.replace(/\/$/, "");
-  const url = `${endpoint}/computervision/imageanalysis:analyze?api-version=2024-02-01&features=read`;
+  let response: Response;
+  let tier: "free" | "paid";
 
-  let response: Response | undefined;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Ocp-Apim-Subscription-Key": config.azureVisionKey,
-        "Content-Type": "application/octet-stream",
-      },
-      body: new Uint8Array(resized),
-    });
+  if (config.hasFreeTierAzure) {
+    console.log(`[ocr] Trying free tier...`);
+    response = await callAzureCVOnce(resized, config.azureVisionKeyFree, config.azureVisionEndpointFree);
 
-    if (response.status === 429) {
-      const wait = parseInt(response.headers.get("Retry-After") ?? "1", 10) * 1000;
-      await new Promise((r) => setTimeout(r, wait));
-      continue;
+    if (response.status === 429 || response.status === 403) {
+      console.log(`[ocr] Free tier returned ${response.status}, falling back to paid tier`);
+      response = await callAzureCVWithRetry(resized, config.azureVisionKey, config.azureVisionEndpoint);
+      tier = "paid";
+    } else {
+      tier = "free";
     }
-    break;
+  } else {
+    response = await callAzureCVWithRetry(resized, config.azureVisionKey, config.azureVisionEndpoint);
+    tier = "paid";
   }
 
-  if (!response!.ok) {
-    const errText = await response!.text();
-    throw new Error(`Azure CV error ${response!.status}: ${errText}`);
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Azure CV error ${response.status}: ${errText}`);
   }
 
-  const result = (await response!.json()) as AzureResponse;
+  console.log(`[ocr] Azure CV responded (tier: ${tier})`);
+  const result = (await response.json()) as AzureResponse;
 
     // Extract word-level bboxes (accurate) — LINE-level bboxes are unreliable
     // because Azure CV merges multiple speech bubbles into one huge line for webtoons.
@@ -325,7 +363,7 @@ export async function ocrImage(imageUrl: string): Promise<OcrBlock[]> {
 
     const resolved = resolveOverlaps(blocks);
     console.log(
-      `[ocr] Extracted ${resolved.length} clusters from ${allWords.length} words`
+      `[ocr] Extracted ${resolved.length} clusters from ${allWords.length} words (tier: ${tier})`
     );
-    return resolved;
+    return { blocks: resolved, tier };
 }

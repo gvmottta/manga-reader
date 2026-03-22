@@ -19,12 +19,20 @@ export interface Chapter {
   image_urls: string | null;
 }
 
+export interface TierStats {
+  ocrFree: number;
+  ocrPaid: number;
+  geminiFree: number;
+  geminiPaid: number;
+}
+
 export interface TranslationProgress {
   chapterId: number;
   total: number;
   completed: number;
   status: "pending" | "translating" | "done" | "error";
   error?: string;
+  tierStats?: TierStats;
 }
 
 export interface TranslationEntry {

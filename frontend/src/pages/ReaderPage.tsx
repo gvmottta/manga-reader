@@ -302,6 +302,7 @@ export default function ReaderPage() {
             status={progress.status}
             error={progress.error}
             onRetry={handleRetry}
+            tierStats={progress.tierStats}
           />
         </div>
       )}
