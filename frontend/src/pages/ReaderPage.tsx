@@ -57,13 +57,18 @@ export default function ReaderPage() {
         }
 
         markAsRead(chapId, comicId);
+        console.log(`[fe] Starting translation for chapter ${chapId}`);
         const { progress: p } = await startTranslation(comicId, chapId);
         if (cancelled) return;
         setProgress(p);
+        console.log(`[fe] Initial progress: ${p.completed}/${p.total} (${p.status})`);
 
+        console.log(`[fe] Fetching initial images...`);
         const { images } = await getChapterImages(comicId, chapId);
         if (cancelled) return;
         setImages(images);
+        const withTranslation = images.filter((img) => img.translation).length;
+        console.log(`[fe] Got ${images.length} images (${withTranslation} translated)`);
 
         if (p.status === "done") return;
 
@@ -75,12 +80,18 @@ export default function ReaderPage() {
             setProgress(status);
 
             if (status.completed > lastCompleted) {
+              console.log(`[fe] Progress: ${lastCompleted} → ${status.completed}/${status.total} (${status.status})`);
               lastCompleted = status.completed;
               const { images } = await getChapterImages(comicId, chapId);
-              if (!cancelled) setImages(images);
+              if (!cancelled) {
+                setImages(images);
+                const withTrans = images.filter((img) => img.translation).length;
+                console.log(`[fe] Images refreshed: ${withTrans} translated`);
+              }
             }
 
             if (status.status === "done" || status.status === "error") {
+              console.log(`[fe] Translation ${status.status}: ${status.completed}/${status.total}`);
               clearInterval(pollRef.current);
             }
           } catch {

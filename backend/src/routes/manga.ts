@@ -129,18 +129,20 @@ mangaRouter.post(
         deleteTranslationsByChapter(chapterId);
       }
 
-      // Check if already translating or pending
+      // Check if already translating, pending, or done (in-memory job state)
       const existing = getJobProgress(chapterId);
-      if (!req.query.force && existing && (existing.status === "translating" || existing.status === "pending")) {
-        res.json({ message: "Translation already in progress", progress: existing });
+      if (!req.query.force && existing && (existing.status === "translating" || existing.status === "pending" || existing.status === "done")) {
+        console.log(`[translate] Chapter ${chapterId}: skipped (job already ${existing.status})`);
+        res.json({ message: existing.status === "done" ? "Translation already cached" : "Translation already in progress", progress: existing });
         return;
       }
 
-      // Check if fully cached
+      // Check if fully cached in DB (covers server restart where job map is empty)
       const translations = getTranslationsByChapter(chapterId);
       if (chapter.image_urls) {
         const imageUrls = JSON.parse(chapter.image_urls) as string[];
         if (translations.length >= imageUrls.length) {
+          console.log(`[translate] Chapter ${chapterId}: fully cached in DB (${translations.length}/${imageUrls.length})`);
           setJobProgress(chapterId, {
             chapterId,
             total: imageUrls.length,
@@ -153,6 +155,7 @@ mangaRouter.post(
       }
 
       // Start translation in background
+      console.log(`[translate] Chapter ${chapterId}: starting new translation`);
       setJobProgress(chapterId, {
         chapterId,
         total: 0,
