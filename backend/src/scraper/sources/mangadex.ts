@@ -126,8 +126,9 @@ async function scrapeComicDetail(mangaId: string): Promise<ComicDetail> {
   };
   const serialStatus = statusMap[attributes.status] || "UNKNOWN";
 
-  // Fetch all chapters (paginated)
-  const episodes: EpisodeInfo[] = [];
+  // Fetch all chapters (paginated), then deduplicate by chapter number
+  // preferring English; if no English, keep the first language found.
+  const allChapters: ChapterData[] = [];
   let offset = 0;
   const limit = 100;
   let total = Infinity;
@@ -144,23 +145,32 @@ async function scrapeComicDetail(mangaId: string): Promise<ComicDetail> {
     );
 
     total = feed.total ?? feed.data.length;
-
-    for (const ch of feed.data) {
-      const chNum = ch.attributes.chapter ? parseFloat(ch.attributes.chapter) : null;
-      const lang = ch.attributes.translatedLanguage;
-      const chTitle = ch.attributes.title
-        || (ch.attributes.chapter ? `Chapter ${ch.attributes.chapter}` : `Chapter`);
-      const displayTitle = `[${lang}] ${chTitle}`;
-
-      episodes.push({
-        sourceEpisodeId: ch.id,
-        title: displayTitle,
-        episodeNumber: chNum ?? episodes.length + 1,
-        isFree: true,
-      });
-    }
-
+    allChapters.push(...feed.data);
     offset += limit;
+  }
+
+  // Deduplicate: group by chapter number, prefer "en"
+  const byChapter = new Map<string, ChapterData>();
+  for (const ch of allChapters) {
+    const key = ch.attributes.chapter ?? ch.id; // chapters without number are unique
+    const existing = byChapter.get(key);
+    if (!existing || (existing.attributes.translatedLanguage !== "en" && ch.attributes.translatedLanguage === "en")) {
+      byChapter.set(key, ch);
+    }
+  }
+
+  const episodes: EpisodeInfo[] = [];
+  for (const ch of byChapter.values()) {
+    const chNum = ch.attributes.chapter ? parseFloat(ch.attributes.chapter) : null;
+    const chTitle = ch.attributes.title
+      || (ch.attributes.chapter ? `Chapter ${ch.attributes.chapter}` : `Chapter`);
+
+    episodes.push({
+      sourceEpisodeId: ch.id,
+      title: chTitle,
+      episodeNumber: chNum ?? episodes.length + 1,
+      isFree: true,
+    });
   }
 
   return {
