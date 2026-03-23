@@ -36,7 +36,9 @@ if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
   });
 }
 
-const serverlessHandler = serverless(app);
+const serverlessHandler = serverless(app, {
+  binary: ["image/*", "application/octet-stream"],
+});
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const handler = async (event: any, context: any) => {
