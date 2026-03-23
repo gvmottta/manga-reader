@@ -41,7 +41,7 @@ export async function translateChapter(
   sourceName: string,
   onProgress: (progress: TranslationProgress) => void
 ): Promise<void> {
-  const chapter = getChapterById(chapterId);
+  const chapter = await getChapterById(chapterId);
   if (!chapter) throw new Error(`Chapter ${chapterId} not found`);
 
   const adapter = getSourceAdapter(sourceName);
@@ -56,16 +56,17 @@ export async function translateChapter(
       chapter.source_episode_id
     );
     imageUrls = images.map((img) => img.url);
-    updateChapterImages(chapterId, imageUrls);
+    await updateChapterImages(chapterId, imageUrls);
   }
 
   const total = imageUrls.length;
   let completed = 0;
 
   // Phase 1: check cache
+  const cachedFlags = await Promise.all(imageUrls.map((_, i) => getTranslation(chapterId, i)));
   const uncached: { index: number; url: string }[] = [];
   for (let i = 0; i < imageUrls.length; i++) {
-    if (getTranslation(chapterId, i)) {
+    if (cachedFlags[i]) {
       completed++;
     } else {
       uncached.push({ index: i, url: imageUrls[i] });
@@ -90,7 +91,7 @@ export async function translateChapter(
     else tierStats.ocrPaid++;
 
     if (blocks.length === 0) {
-      upsertTranslation({
+      await upsertTranslation({
         chapterId,
         imageIndex: index,
         originalUrl: url,
@@ -123,7 +124,7 @@ export async function translateChapter(
       const originalTexts = entries.map((e) => e.original).join("\n");
       const translatedTexts = entries.map((e) => e.translated).join("\n");
 
-      upsertTranslation({
+      await upsertTranslation({
         chapterId,
         imageIndex: index,
         originalUrl: urlMap.get(index)!,

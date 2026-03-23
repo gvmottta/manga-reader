@@ -21,9 +21,9 @@ import {
 export const mangaRouter = Router();
 
 // GET /api/manga - List all comics
-mangaRouter.get("/", (_req, res, next) => {
+mangaRouter.get("/", async (_req, res, next) => {
   try {
-    const comics = getAllComics();
+    const comics = await getAllComics();
     res.json({ comics });
   } catch (err) {
     next(err);
@@ -49,7 +49,7 @@ mangaRouter.post("/load", async (req, res, next) => {
 
     const detail = await adapter.scrapeComicDetail(sourceId);
 
-    const comic = upsertComic({
+    const comic = await upsertComic({
       source: adapter.name,
       sourceId: detail.sourceId,
       title: detail.title,
@@ -59,14 +59,16 @@ mangaRouter.post("/load", async (req, res, next) => {
       serialStatus: detail.serialStatus,
     });
 
-    const chapters = detail.episodes.map((ep) =>
-      upsertChapter({
-        comicId: comic.id,
-        sourceEpisodeId: ep.sourceEpisodeId,
-        title: ep.title,
-        chapterNumber: ep.episodeNumber,
-        isFree: ep.isFree,
-      })
+    const chapters = await Promise.all(
+      detail.episodes.map((ep) =>
+        upsertChapter({
+          comicId: comic.id,
+          sourceEpisodeId: ep.sourceEpisodeId,
+          title: ep.title,
+          chapterNumber: ep.episodeNumber,
+          isFree: ep.isFree,
+        })
+      )
     );
 
     res.json({ comic, chapters });
@@ -76,7 +78,7 @@ mangaRouter.post("/load", async (req, res, next) => {
 });
 
 // GET /api/manga/:comicId/chapters
-mangaRouter.get("/:comicId/chapters", (req, res, next) => {
+mangaRouter.get("/:comicId/chapters", async (req, res, next) => {
   try {
     const comicId = parseInt(req.params.comicId, 10);
     if (isNaN(comicId)) {
@@ -84,14 +86,16 @@ mangaRouter.get("/:comicId/chapters", (req, res, next) => {
       return;
     }
 
-    const comic = getComicById(comicId);
+    const comic = await getComicById(comicId);
     if (!comic) {
       res.status(404).json({ error: "Comic not found" });
       return;
     }
 
-    const chapters = getChaptersByComic(comicId);
-    const translationCounts = getTranslationCountsByComic(comicId);
+    const [chapters, translationCounts] = await Promise.all([
+      getChaptersByComic(comicId),
+      getTranslationCountsByComic(comicId),
+    ]);
     const countMap = new Map(translationCounts.map(r => [r.chapter_id, r.translated_count]));
 
     const enrichedChapters = chapters.map(ch => {
@@ -122,13 +126,16 @@ mangaRouter.post(
         return;
       }
 
-      const comic = getComicById(comicId);
+      const [comic, chapter] = await Promise.all([
+        getComicById(comicId),
+        getChapterById(chapterId),
+      ]);
+
       if (!comic) {
         res.status(404).json({ error: "Comic not found" });
         return;
       }
 
-      const chapter = getChapterById(chapterId);
       if (!chapter || chapter.comic_id !== comicId) {
         res.status(404).json({ error: "Chapter not found" });
         return;
@@ -136,7 +143,7 @@ mangaRouter.post(
 
       // Force retry: delete cached translations and reset job state
       if (req.query.force === "true") {
-        deleteTranslationsByChapter(chapterId);
+        await deleteTranslationsByChapter(chapterId);
       }
 
       // Check if already translating, pending, or done (in-memory job state)
@@ -148,7 +155,7 @@ mangaRouter.post(
       }
 
       // Check if fully cached in DB (covers server restart where job map is empty)
-      const translations = getTranslationsByChapter(chapterId);
+      const translations = await getTranslationsByChapter(chapterId);
       if (chapter.image_urls) {
         const imageUrls = JSON.parse(chapter.image_urls) as string[];
         if (translations.length >= imageUrls.length) {
@@ -251,13 +258,16 @@ mangaRouter.get(
         return;
       }
 
-      const comic = getComicById(comicId);
+      const [comic, chapter] = await Promise.all([
+        getComicById(comicId),
+        getChapterById(chapterId),
+      ]);
+
       if (!comic) {
         res.status(404).json({ error: "Comic not found" });
         return;
       }
 
-      const chapter = getChapterById(chapterId);
       if (!chapter || chapter.comic_id !== comicId) {
         res.status(404).json({ error: "Chapter not found" });
         return;
@@ -275,10 +285,10 @@ mangaRouter.get(
           chapter.source_episode_id
         );
         imageUrls = images.map((img) => img.url);
-        updateChapterImages(chapterId, imageUrls);
+        await updateChapterImages(chapterId, imageUrls);
       }
 
-      const translations = getTranslationsByChapter(chapterId);
+      const translations = await getTranslationsByChapter(chapterId);
       const translationMap = new Map(
         translations.map((t) => [t.image_index, t])
       );
