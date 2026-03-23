@@ -1,7 +1,7 @@
 import Database, { type Database as DatabaseType } from "better-sqlite3";
 import path from "path";
 
-const DB_PATH = path.resolve("manga-reader.db");
+const DB_PATH = process.env.DB_PATH ?? path.resolve("manga-reader.db");
 
 const db: DatabaseType = new Database(DB_PATH);
 

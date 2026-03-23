@@ -173,19 +173,35 @@ mangaRouter.post(
         status: "pending",
       });
 
-      // Fire and forget
-      translateChapter(chapterId, comic.source_id, comic.source, (progress) => {
-        setJobProgress(chapterId, progress);
-      }).catch((error) => {
-        setJobProgress(chapterId, {
-          chapterId,
-          total: 0,
-          completed: 0,
-          status: "error",
-          error:
-            error instanceof Error ? error.message : "Translation failed",
+      if (process.env.AWS_LAMBDA_FUNCTION_NAME) {
+        // On Lambda: invoke self asynchronously so translation runs in its own execution
+        const { LambdaClient, InvokeCommand } = await import("@aws-sdk/client-lambda");
+        const lambdaClient = new LambdaClient({ region: process.env.AWS_REGION ?? "us-east-1" });
+        await lambdaClient.send(new InvokeCommand({
+          FunctionName: process.env.AWS_LAMBDA_FUNCTION_NAME,
+          InvocationType: "Event",
+          Payload: Buffer.from(JSON.stringify({
+            __translateJob: true,
+            chapterId,
+            comicSourceId: comic.source_id,
+            sourceName: comic.source,
+          })),
+        }));
+      } else {
+        // Local / EC2: fire and forget in-process
+        translateChapter(chapterId, comic.source_id, comic.source, (progress) => {
+          setJobProgress(chapterId, progress);
+        }).catch((error) => {
+          setJobProgress(chapterId, {
+            chapterId,
+            total: 0,
+            completed: 0,
+            status: "error",
+            error:
+              error instanceof Error ? error.message : "Translation failed",
+          });
         });
-      });
+      }
 
       res.json({ message: "Translation started", progress: getJobProgress(chapterId) });
     } catch (err) {

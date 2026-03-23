@@ -8,6 +8,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@aws-sdk/client-lambda": "^3.1014.0",
     "@google/genai": "^1.5.0",
     "@types/sharp": "^0.31.1",
     "better-sqlite3": "^11.8.1",
@@ -16,10 +17,12 @@
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "p-limit": "^7.3.0",
+    "serverless-http": "^4.0.0",
     "sharp": "^0.34.5",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.161",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.2",

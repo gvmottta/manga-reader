@@ -27,9 +27,8 @@ export function validateConfig(): void {
     process.exit(1);
   }
   if (!config.azureVisionKey || !config.azureVisionEndpoint) {
-    console.error(
-      "ERROR: AZURE_VISION_KEY and AZURE_VISION_ENDPOINT must be set in .env"
+    console.warn(
+      "WARN: AZURE_VISION_KEY and AZURE_VISION_ENDPOINT not set — OCR will be disabled"
     );
-    process.exit(1);
   }
 }
