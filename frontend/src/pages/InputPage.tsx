@@ -40,6 +40,11 @@ export default function InputPage() {
       <Navbar />
 
       <div className="flex min-h-[60vh] flex-col items-center justify-center py-6">
+        <img
+          src="/logo.png"
+          alt="Manga Reader"
+          className="mb-6 h-28 w-28 object-contain drop-shadow-[0_0_24px_rgba(168,85,247,0.4)]"
+        />
         <p className="mb-8 text-gray-400">
           Cola o link do mangá aqui, meu bem~
         </p>

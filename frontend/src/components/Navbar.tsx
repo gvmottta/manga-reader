@@ -36,10 +36,11 @@ export default function Navbar({ backTo }: NavbarProps) {
               </Link>
             ) : (
               <Link to="/" className="group flex items-center gap-2.5">
-                <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 text-xs font-bold text-white shadow-lg shadow-purple-500/25 transition-shadow group-hover:shadow-purple-500/40 select-none">
-                  MG
-                  <div className="absolute inset-0 rounded-lg bg-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
-                </div>
+                <img
+                  src="/logo.png"
+                  alt="Manga Reader logo"
+                  className="h-8 w-8 rounded-lg object-contain shadow-lg shadow-purple-500/25 transition-shadow group-hover:shadow-purple-500/40"
+                />
                 <span className="bg-gradient-to-r from-purple-300 to-purple-500 bg-clip-text text-lg font-bold text-transparent">
                   Mangás pra Minha Gata
                 </span>
