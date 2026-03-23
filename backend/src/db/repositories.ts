@@ -69,19 +69,19 @@ export function upsertComic(data: {
     data.coverUrl ?? null,
     data.totalChapters ?? null,
     data.serialStatus ?? null
-  ) as ComicRow;
+  ) as unknown as ComicRow;
 }
 
 const getComicByIdStmt = db.prepare("SELECT * FROM comics WHERE id = ?");
 export function getComicById(id: number): ComicRow | undefined {
-  return getComicByIdStmt.get(id) as ComicRow | undefined;
+  return getComicByIdStmt.get(id) as unknown as ComicRow | undefined;
 }
 
 const getAllComicsStmt = db.prepare(
   "SELECT * FROM comics ORDER BY updated_at DESC"
 );
 export function getAllComics(): ComicRow[] {
-  return getAllComicsStmt.all() as ComicRow[];
+  return getAllComicsStmt.all() as unknown as ComicRow[];
 }
 
 const getComicBySourceStmt = db.prepare(
@@ -91,7 +91,7 @@ export function getComicBySource(
   source: string,
   sourceId: string
 ): ComicRow | undefined {
-  return getComicBySourceStmt.get(source, sourceId) as ComicRow | undefined;
+  return getComicBySourceStmt.get(source, sourceId) as unknown as ComicRow | undefined;
 }
 
 // Chapters
@@ -119,14 +119,14 @@ export function upsertChapter(data: {
     data.title ?? null,
     data.chapterNumber ?? null,
     data.isFree ? 1 : 0
-  ) as ChapterRow;
+  ) as unknown as ChapterRow;
 }
 
 const getChaptersByComicStmt = db.prepare(
   "SELECT * FROM chapters WHERE comic_id = ? ORDER BY chapter_number ASC"
 );
 export function getChaptersByComic(comicId: number): ChapterRow[] {
-  return getChaptersByComicStmt.all(comicId) as ChapterRow[];
+  return getChaptersByComicStmt.all(comicId) as unknown as ChapterRow[];
 }
 
 const getTranslationCountsByComicStmt = db.prepare(`
@@ -142,7 +142,7 @@ export function getTranslationCountsByComic(comicId: number): { chapter_id: numb
 
 const getChapterByIdStmt = db.prepare("SELECT * FROM chapters WHERE id = ?");
 export function getChapterById(id: number): ChapterRow | undefined {
-  return getChapterByIdStmt.get(id) as ChapterRow | undefined;
+  return getChapterByIdStmt.get(id) as unknown as ChapterRow | undefined;
 }
 
 const updateChapterImagesStmt = db.prepare(
@@ -186,7 +186,7 @@ export function upsertTranslation(data: {
     data.targetLang,
     data.overlayData ?? null,
     data.modelUsed
-  ) as TranslationRow;
+  ) as unknown as TranslationRow;
 }
 
 const getTranslationsByChapterStmt = db.prepare(
@@ -199,7 +199,7 @@ export function getTranslationsByChapter(
   return getTranslationsByChapterStmt.all(
     chapterId,
     targetLang
-  ) as TranslationRow[];
+  ) as unknown as TranslationRow[];
 }
 
 const getTranslationStmt = db.prepare(
@@ -214,7 +214,7 @@ export function getTranslation(
     chapterId,
     imageIndex,
     targetLang
-  ) as TranslationRow | undefined;
+  ) as unknown as TranslationRow | undefined;
 }
 
 const deleteTranslationsByChapterStmt = db.prepare(
