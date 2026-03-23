@@ -5,8 +5,13 @@ import { config, validateConfig } from "./config.js";
 import { mangaRouter } from "./routes/manga.js";
 import { proxyRouter } from "./routes/proxy.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { registerSource } from "./scraper/registry.js";
+import { qtoonAdapter } from "./scraper/sources/qtoon.js";
+import { mangadexAdapter } from "./scraper/sources/mangadex.js";
 
 validateConfig();
+registerSource(qtoonAdapter);
+registerSource(mangadexAdapter);
 
 const app = express();
 

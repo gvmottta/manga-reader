@@ -45,7 +45,7 @@ export default function InputPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="flex w-full max-w-xl gap-3">
-          <label htmlFor="url-input" className="sr-only">URL do QToon</label>
+          <label htmlFor="url-input" className="sr-only">URL do mangá</label>
           <div className="relative flex-1">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
@@ -68,7 +68,7 @@ export default function InputPage() {
         </form>
 
         <p className="mt-2 text-sm text-gray-500">
-          Ex.: cole o link do QToon ou só o número
+          Ex.: link do QToon ou MangaDex
         </p>
 
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}

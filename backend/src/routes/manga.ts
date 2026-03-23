@@ -1,9 +1,5 @@
 import { Router } from "express";
-import { parseQToonUrl } from "../scraper/urlParser.js";
-import {
-  scrapeComicDetail,
-  scrapeChapterImages,
-} from "../scraper/qtoonScraper.js";
+import { resolveInput, getSourceAdapter } from "../scraper/registry.js";
 import {
   upsertComic,
   upsertChapter,
@@ -43,19 +39,19 @@ mangaRouter.post("/load", async (req, res, next) => {
       return;
     }
 
-    let csid: string;
+    let adapter, sourceId;
     try {
-      csid = parseQToonUrl(url);
+      ({ adapter, sourceId } = resolveInput(url));
     } catch {
-      res.status(400).json({ error: "Invalid QToon URL or ID" });
+      res.status(400).json({ error: "Unrecognized manga URL or ID" });
       return;
     }
 
-    const detail = await scrapeComicDetail(csid);
+    const detail = await adapter.scrapeComicDetail(sourceId);
 
     const comic = upsertComic({
-      source: "qtoon",
-      sourceId: detail.csid,
+      source: adapter.name,
+      sourceId: detail.sourceId,
       title: detail.title,
       author: detail.author,
       coverUrl: detail.coverUrl,
@@ -66,7 +62,7 @@ mangaRouter.post("/load", async (req, res, next) => {
     const chapters = detail.episodes.map((ep) =>
       upsertChapter({
         comicId: comic.id,
-        sourceEpisodeId: ep.esid,
+        sourceEpisodeId: ep.sourceEpisodeId,
         title: ep.title,
         chapterNumber: ep.episodeNumber,
         isFree: ep.isFree,
@@ -178,7 +174,7 @@ mangaRouter.post(
       });
 
       // Fire and forget
-      translateChapter(chapterId, comic.source_id, (progress) => {
+      translateChapter(chapterId, comic.source_id, comic.source, (progress) => {
         setJobProgress(chapterId, progress);
       }).catch((error) => {
         setJobProgress(chapterId, {
@@ -257,7 +253,8 @@ mangaRouter.get(
       if (chapter.image_urls && !forceRefresh) {
         imageUrls = JSON.parse(chapter.image_urls) as string[];
       } else {
-        const images = await scrapeChapterImages(
+        const sourceAdapter = getSourceAdapter(comic.source);
+        const images = await sourceAdapter.scrapeChapterImages(
           comic.source_id,
           chapter.source_episode_id
         );

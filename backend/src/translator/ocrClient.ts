@@ -271,13 +271,13 @@ async function callAzureCVWithRetry(
   return response!;
 }
 
-export async function ocrImage(imageUrl: string): Promise<OcrImageResult> {
+export async function ocrImage(imageUrl: string, referer?: string): Promise<OcrImageResult> {
   console.log(`[ocr] Fetching image: ${imageUrl}`);
   const imageResponse = await fetch(imageUrl, {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      Referer: "https://qtoon.com/",
+      ...(referer ? { Referer: referer } : {}),
     },
   });
   if (!imageResponse.ok) {

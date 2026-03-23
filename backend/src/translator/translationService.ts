@@ -8,7 +8,7 @@ import {
   getChapterById,
   updateChapterImages,
 } from "../db/repositories.js";
-import { scrapeChapterImages } from "../scraper/qtoonScraper.js";
+import { getSourceAdapter } from "../scraper/registry.js";
 import { config } from "../config.js";
 import type { TranslationProgress, TierStats } from "./types.js";
 
@@ -38,17 +38,20 @@ function chunk<T>(array: T[], size: number): T[][] {
 export async function translateChapter(
   chapterId: number,
   comicSourceId: string,
+  sourceName: string,
   onProgress: (progress: TranslationProgress) => void
 ): Promise<void> {
   const chapter = getChapterById(chapterId);
   if (!chapter) throw new Error(`Chapter ${chapterId} not found`);
+
+  const adapter = getSourceAdapter(sourceName);
 
   // Get image URLs - scrape if not cached
   let imageUrls: string[];
   if (chapter.image_urls) {
     imageUrls = JSON.parse(chapter.image_urls) as string[];
   } else {
-    const images = await scrapeChapterImages(
+    const images = await adapter.scrapeChapterImages(
       comicSourceId,
       chapter.source_episode_id
     );
@@ -82,7 +85,7 @@ export async function translateChapter(
 
   // Helper: run OCR on a single image, returns result or null (no text)
   async function processOcrImage(index: number, url: string): Promise<OcrImageData | null> {
-    const { blocks, tier } = await ocrImage(url);
+    const { blocks, tier } = await ocrImage(url, adapter.referer);
     if (tier === "free") tierStats.ocrFree++;
     else tierStats.ocrPaid++;
 

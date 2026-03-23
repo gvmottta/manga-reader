@@ -1,8 +1,10 @@
 import { Router } from "express";
+import {
+  getAllAllowedHostnames,
+  getRefererForHostname,
+} from "../scraper/registry.js";
 
 export const proxyRouter = Router();
-
-const ALLOWED_HOSTNAMES = ["resource.qqtoon.com"];
 
 proxyRouter.get("/image", async (req, res, next) => {
   try {
@@ -20,16 +22,18 @@ proxyRouter.get("/image", async (req, res, next) => {
       return;
     }
 
-    if (!ALLOWED_HOSTNAMES.includes(parsed.hostname)) {
+    if (!getAllAllowedHostnames().includes(parsed.hostname)) {
       res.status(400).json({ error: "Hostname not allowed" });
       return;
     }
+
+    const referer = getRefererForHostname(parsed.hostname) ?? "";
 
     const response = await fetch(imageUrl, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        Referer: "https://qtoon.com/",
+        Referer: referer,
       },
     });
 

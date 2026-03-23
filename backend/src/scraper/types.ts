@@ -1,5 +1,5 @@
 export interface ComicDetail {
-  csid: string;
+  sourceId: string;
   title: string;
   author: string;
   coverUrl: string;
@@ -10,7 +10,7 @@ export interface ComicDetail {
 }
 
 export interface EpisodeInfo {
-  esid: string;
+  sourceEpisodeId: string;
   title: string;
   episodeNumber: number;
   isFree: boolean;

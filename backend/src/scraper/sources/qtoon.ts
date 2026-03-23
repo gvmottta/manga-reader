@@ -1,6 +1,12 @@
-import { createHash, createDecipheriv, createCipheriv, randomUUID } from "crypto";
-import { extractNuxtData, findInNuxtData } from "./nuxtExtractor.js";
-import type { ComicDetail, EpisodeInfo, ChapterImage } from "./types.js";
+import {
+  createHash,
+  createDecipheriv,
+  createCipheriv,
+  randomUUID,
+} from "crypto";
+import { extractNuxtData, findInNuxtData } from "../nuxtExtractor.js";
+import type { SourceAdapter } from "../sourceAdapter.js";
+import type { ComicDetail, EpisodeInfo, ChapterImage } from "../types.js";
 
 const BASE_URL = "https://qtoon.com";
 const API_BASE = "https://api.qtoon.com";
@@ -125,13 +131,15 @@ async function fetchWithRetry(
   throw new Error(`Max retries reached for ${url}`);
 }
 
-export async function scrapeComicDetail(csid: string): Promise<ComicDetail> {
+async function scrapeComicDetail(csid: string): Promise<ComicDetail> {
   const url = `${BASE_URL}/detail/${csid}`;
   const response = await fetchWithRetry(url);
   const html = await response.text();
   const nuxt = extractNuxtData(html);
 
-  const comic = findInNuxtData(nuxt, "comic") as Record<string, unknown> | undefined;
+  const comic = findInNuxtData(nuxt, "comic") as
+    | Record<string, unknown>
+    | undefined;
   if (!comic) {
     throw new Error(`Could not find comic data for ${csid}`);
   }
@@ -142,7 +150,7 @@ export async function scrapeComicDetail(csid: string): Promise<ComicDetail> {
     (ep: unknown, idx: number) => {
       const e = ep as Record<string, unknown>;
       return {
-        esid: String(e.esid || ""),
+        sourceEpisodeId: String(e.esid || ""),
         title: String(e.title || `Episode ${idx + 1}`),
         episodeNumber: idx + 1,
         isFree: e.coinLock === "none" && e.adLock === "none",
@@ -151,27 +159,33 @@ export async function scrapeComicDetail(csid: string): Promise<ComicDetail> {
   );
 
   return {
-    csid: String(comic.csid || csid),
+    sourceId: String(comic.csid || csid),
     title: String(comic.title || "Unknown"),
     author: String(comic.author || "Unknown"),
     coverUrl: String(
       comic.coverUrl ||
-      comic.cover ||
-      ((comic.image as Record<string, Record<string, unknown>> | undefined)?.thumb?.url) ||
-      ""
+        comic.cover ||
+        (
+          comic.image as
+            | Record<string, Record<string, unknown>>
+            | undefined
+        )?.thumb?.url ||
+        ""
     ),
     totalEpisodes: Number(comic.total || parsedEpisodes.length),
     serialStatus: String(comic.serialStatus || "UNKNOWN"),
     tags: Array.isArray(comic.tags)
       ? comic.tags.map((t: unknown) =>
-          typeof t === "string" ? t : String((t as Record<string, unknown>).name || t)
+          typeof t === "string"
+            ? t
+            : String((t as Record<string, unknown>).name || t)
         )
       : [],
     episodes: parsedEpisodes,
   };
 }
 
-export async function scrapeChapterImages(
+async function scrapeChapterImages(
   csid: string,
   esid: string
 ): Promise<ChapterImage[]> {
@@ -238,3 +252,29 @@ export async function scrapeChapterImages(
 
   return images;
 }
+
+export const qtoonAdapter: SourceAdapter = {
+  name: "qtoon",
+  allowedHostnames: ["resource.qqtoon.com"],
+  referer: "https://qtoon.com/",
+
+  parseUrl(input: string): string | null {
+    const trimmed = input.trim();
+
+    // Full URL: extract ID from path (handles locale prefixes like /pt/, /es/, etc.)
+    if (trimmed.includes("qtoon.com")) {
+      const match = trimmed.match(
+        /qtoon\.com\/(?:[a-z]{2}\/)?(?:detail|reader)\/([a-zA-Z0-9_]+)/
+      );
+      return match?.[1] ?? null;
+    }
+
+    // Bare ID
+    if (/^[a-zA-Z0-9_]+$/.test(trimmed)) return trimmed;
+
+    return null;
+  },
+
+  scrapeComicDetail,
+  scrapeChapterImages,
+};
