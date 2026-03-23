@@ -31,6 +31,7 @@ export default function ReaderPage() {
   const { markAsRead } = useReadHistory();
   const navigate = useNavigate();
   const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const imageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const observerRef = useRef<IntersectionObserver>(undefined);
@@ -245,13 +246,16 @@ export default function ReaderPage() {
 
   function handleTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
-    const delta = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(delta) < 50) return;
-    if (delta > 0 && prevChapter) navigate(`/comic/${comicId}/read/${prevChapter.id}`);
-    if (delta < 0 && nextChapter) navigate(`/comic/${comicId}/read/${nextChapter.id}`);
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    // Only navigate if the swipe is primarily horizontal (not a scroll)
+    if (Math.abs(deltaX) < 60 || Math.abs(deltaX) < Math.abs(deltaY) * 1.5) return;
+    if (deltaX > 0 && prevChapter) navigate(`/comic/${comicId}/read/${prevChapter.id}`);
+    if (deltaX < 0 && nextChapter) navigate(`/comic/${comicId}/read/${nextChapter.id}`);
   }
 
   return (
