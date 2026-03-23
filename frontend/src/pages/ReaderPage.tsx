@@ -200,7 +200,7 @@ export default function ReaderPage() {
         <p className="text-red-400">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="mt-4 rounded bg-purple-600 px-4 py-2 text-white"
+          className="mt-4 rounded bg-secondary px-4 py-2 text-white"
         >
           Tentar de novo
         </button>
@@ -226,7 +226,7 @@ export default function ReaderPage() {
       {prevChapter && (
         <Link
           to={`/comic/${comicId}/read/${prevChapter.id}`}
-          className="flex items-center gap-1.5 rounded-full border border-gray-700 px-4 py-2 text-sm font-medium transition hover:border-purple-500 hover:text-purple-300"
+          className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:border-secondary hover:text-secondary"
         >
           <ChevronLeft size={14} />
           Cap. {prevChapter.chapter_number}
@@ -235,7 +235,7 @@ export default function ReaderPage() {
       {nextChapter && (
         <Link
           to={`/comic/${comicId}/read/${nextChapter.id}`}
-          className="flex items-center gap-1.5 rounded-full border border-gray-700 px-4 py-2 text-sm font-medium transition hover:border-purple-500 hover:text-purple-300"
+          className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:border-secondary hover:text-secondary"
         >
           Cap. {nextChapter.chapter_number}
           <ChevronRight size={14} />
@@ -269,16 +269,16 @@ export default function ReaderPage() {
         <div className="sticky top-0 z-10 -mx-4 mb-4">
           {/* Safe-area bridge */}
           <div
-            className="bg-gray-950/80 backdrop-blur-xl"
+            className="bg-bg/80 backdrop-blur-xl"
             style={{ height: "var(--safe-top)" }}
           />
-          <div className="relative border-b border-white/[0.06] bg-gray-950/70 px-4 py-3 backdrop-blur-xl">
+          <div className="relative border-b border-border/30 bg-bg/70 px-4 py-3 backdrop-blur-xl">
             {/* Top highlight */}
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-secondary/30 to-transparent" />
 
             <Link
               to={`/comic/${comicId}`}
-              className="group inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-sm text-purple-400 transition hover:border-purple-500/40 hover:bg-purple-500/10 hover:text-purple-300"
+              className="group inline-flex items-center gap-1.5 rounded-full border border-border/40 bg-surface/40 px-3 py-1.5 text-sm text-secondary transition hover:border-secondary/40 hover:bg-secondary/10 hover:text-secondary"
             >
               <ChevronLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
               {comic.title}
@@ -289,11 +289,11 @@ export default function ReaderPage() {
                   Capítulo {chapter.chapter_number}
                 </span>
                 {chapter.title && (
-                  <span className="text-gray-300">{chapter.title}</span>
+                  <span className="text-text">{chapter.title}</span>
                 )}
               </div>
             )}
-            <div className="mt-1 flex flex-wrap gap-x-4 text-xs text-gray-500">
+            <div className="mt-1 flex flex-wrap gap-x-4 text-xs text-muted">
               {comic.author && <span>Feito por: {comic.author}</span>}
               {comic.total_chapters && (
                 <span>{comic.total_chapters} capítulos no total</span>
@@ -311,7 +311,7 @@ export default function ReaderPage() {
             </div>
 
             {/* Bottom fade */}
-            <div className="absolute inset-x-0 -bottom-4 h-4 bg-gradient-to-b from-gray-950/40 to-transparent pointer-events-none" />
+            <div className="absolute inset-x-0 -bottom-4 h-4 bg-gradient-to-b from-bg/40 to-transparent pointer-events-none" />
           </div>
         </div>
       )}
@@ -339,7 +339,7 @@ export default function ReaderPage() {
       {images.length === 0 && progress !== null && (
         <div className="mx-auto max-w-2xl space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="aspect-[3/4] w-full animate-pulse rounded-lg bg-gray-800" />
+            <div key={i} className="aspect-[3/4] w-full animate-pulse rounded-lg bg-surface-2" />
           ))}
         </div>
       )}
@@ -366,11 +366,11 @@ export default function ReaderPage() {
 
       {/* Bottom navigation (1.3) */}
       {images.length > 0 && (
-        <div className="mt-6 flex items-center justify-between border-t border-gray-800 pt-4">
+        <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
           {navLinks}
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="flex items-center gap-1.5 rounded-full border border-gray-700 px-4 py-2 text-sm font-medium transition hover:border-purple-500 hover:text-purple-300"
+            className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-medium transition hover:border-secondary hover:text-secondary"
           >
             <ArrowUp size={14} />
             Voltar pro topo
