@@ -44,7 +44,7 @@ export default function Navbar({ backTo }: NavbarProps) {
                   alt="Manga Reader logo"
                   className="h-8 w-8 rounded-lg object-contain shadow-lg shadow-secondary/25 transition-shadow group-hover:shadow-secondary/40"
                 />
-                <span className="bg-gradient-to-r from-secondary to-primary bg-clip-text text-lg font-bold text-transparent">
+                <span className="bg-clip-text text-lg font-bold text-transparent">
                   Mangás pra Minha Gata
                 </span>
               </Link>
