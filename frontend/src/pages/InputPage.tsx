@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { loadManga, listComics, type Comic } from "../api/client";
+import { loadManga, listComics, proxyImageUrl, type Comic } from "../api/client";
 import Navbar from "../components/Navbar";
 import { Search, Loader2, BookOpen } from "lucide-react";
 
@@ -109,7 +109,7 @@ export default function InputPage() {
                       {comic.cover_url ? (
                         <div className="overflow-hidden">
                           <img
-                            src={`/api/proxy/image?url=${encodeURIComponent(comic.cover_url)}`}
+                            src={proxyImageUrl(comic.cover_url)}
                             alt={comic.title}
                             className="aspect-[3/4] w-full object-cover transition-transform duration-300 group-hover:scale-105"
                           />

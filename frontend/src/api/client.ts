@@ -57,6 +57,14 @@ export interface ChapterImage {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
+export function proxyImageUrl(url: string): string {
+  return `${API_BASE}/api/proxy/image?url=${encodeURIComponent(url)}`;
+}
+
+export function resolveApiUrl(path: string): string {
+  return `${API_BASE}${path}`;
+}
+
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
     headers: { "Content-Type": "application/json" },

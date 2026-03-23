@@ -6,6 +6,7 @@ import {
   getTranslationStatus,
   getChapterImages,
   getChapters,
+  resolveApiUrl,
   type ChapterImage,
   type TranslationProgress,
   type Comic,
@@ -354,7 +355,7 @@ export default function ReaderPage() {
               data-index={idx}
             >
               <ImageOverlay
-                proxyUrl={img.proxyUrl}
+                proxyUrl={resolveApiUrl(img.proxyUrl)}
                 entries={img.translation?.overlayData || []}
                 translating={!img.translation && isTranslating}
                 index={idx}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getChapters, type Comic, type Chapter } from "../api/client";
+import { getChapters, proxyImageUrl, type Comic, type Chapter } from "../api/client";
 import { useReadHistory } from "../hooks/useReadHistory";
 import Navbar from "../components/Navbar";
 import { Play, Check, Lock, ChevronRight, RefreshCw, Languages } from "lucide-react";
@@ -92,7 +92,7 @@ export default function ComicDetailPage() {
   }
 
   const coverProxy = comic.cover_url
-    ? `/api/proxy/image?url=${encodeURIComponent(comic.cover_url)}`
+    ? proxyImageUrl(comic.cover_url)
     : null;
 
   return (
